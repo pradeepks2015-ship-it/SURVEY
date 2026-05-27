@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>वसूली ट्रैकर | धूमा DC</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#06111f;
+  --surface:#0b1c2e;
+  --card:#0f2238;
+  --border:#1a3550;
+  --gold:#f0a500;
+  --gold2:#ffd166;
+  --blue:#2196f3;
+  --green:#00c896;
+  --red:#ff4d6d;
+  --orange:#ff8c42;
+  --text:#ddeaf7;
+  --muted:#5d7a99;
+  --radius:14px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:"Noto Sans Devanagari",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+.screen{display:none;min-height:100vh;flex-direction:column;}
+.screen.active{display:flex;}
+
+/* LOGIN */
+#login-screen{align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse 80% 55% at 50% 0%,rgba(240,165,0,.08) 0%,transparent 70%);}
+.login-logo{width:88px;height:88px;object-fit:contain;margin-bottom:10px;filter:drop-shadow(0 0 18px rgba(240,165,0,.3));}
+.login-title{font-family:"Baloo 2",cursive;font-size:21px;font-weight:800;color:var(--gold2);text-align:center;line-height:1.2;margin-bottom:3px;}
+.login-sub{font-size:11px;color:var(--muted);text-align:center;margin-bottom:22px;}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:22px 18px;width:100%;max-width:370px;box-shadow:0 8px 40px rgba(0,0,0,.5);}
+.f-label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;display:block;}
+.f-input,.f-select{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;color:var(--text);font-family:"Noto Sans Devanagari",sans-serif;font-size:14px;margin-bottom:14px;outline:none;appearance:none;}
+.f-input:focus,.f-select:focus,.fi:focus,.fs:focus,.fta:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(240,165,0,.12);}
+.sel-wrap{position:relative;margin-bottom:14px;}
+.sel-wrap .f-select{margin-bottom:0;}
+.sel-wrap::after{content:"▾";position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;}
+.login-btn{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--gold),#c47a00);color:#080e1a;font-family:"Baloo 2",cursive;font-size:16px;font-weight:800;cursor:pointer;margin-top:4px;letter-spacing:.3px;transition:opacity .2s;}
+.login-btn:active{opacity:.85;}
+.role-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.role-card{padding:14px 10px;border-radius:13px;border:2px solid var(--border);background:var(--surface);cursor:pointer;text-align:center;transition:all .2s;}
+.role-card.selected{border-color:var(--gold);background:rgba(240,165,0,.09);}
+.role-card-icon{font-size:26px;margin-bottom:5px;}
+.role-card-title{font-size:12px;font-weight:700;color:var(--text);}
+.role-card-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.pw-wrap{position:relative;margin-bottom:14px;}
+.pw-wrap .f-input{margin-bottom:0;padding-right:42px;}
+.pw-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;color:var(--muted);font-size:16px;border:none;background:none;}
+
+/* SYNC BAR */
+.sync-bar{background:#071609;border-bottom:1px solid #152e18;padding:5px 14px;display:flex;align-items:center;gap:7px;font-size:11px;flex-shrink:0;}
+.sdot{width:8px;height:8px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+.sdot.off{background:var(--red);animation:none;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+@keyframes sp{to{transform:rotate(360deg);}}
+.stxt{color:var(--green);}
+.stxt.off{color:var(--red);}
+.stime{margin-left:auto;color:var(--muted);font-size:10px;}
+
+/* HEADER */
+.app-header{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 14px;position:sticky;top:0;z-index:100;}
+.hdr1{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.hdr-left{display:flex;align-items:center;gap:7px;}
+.hdr-right{display:flex;align-items:center;gap:5px;}
+.hdr-icon{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--gold),#c47a00);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.hdr-title{font-family:"Baloo 2",cursive;font-size:14px;font-weight:800;color:var(--gold2);}
+.hdr-sub{font-size:10px;color:var(--muted);}
+.hbtn{border:none;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.user-pill{display:flex;align-items:center;gap:5px;background:var(--card);border:1px solid var(--border);border-radius:20px;padding:4px 9px 4px 4px;cursor:pointer;position:relative;}
+.logout-menu{display:none;position:absolute;top:40px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:6px;z-index:300;min-width:155px;box-shadow:0 8px 28px rgba(0,0,0,.6);}
+.logout-menu.open{display:block;}
+.user-info-item{padding:8px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:4px;line-height:1.5;}
+.logout-item{padding:9px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--red);}
+.logout-item:hover{background:rgba(255,77,109,.1);}
+.udot{width:24px;height:24px;border-radius:50%;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;}
+.udot.sup{background:linear-gradient(135deg,var(--gold),#c47a00);color:#000;}
+.udot.lin{background:linear-gradient(135deg,var(--blue),#0d6efd);color:#fff;}
+.uname{font-size:11px;font-weight:600;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.hq-scroll{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px;}
+.hq-scroll::-webkit-scrollbar{display:none;}
+.hq-tab{flex-shrink:0;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;white-space:nowrap;transition:all .18s;}
+.hq-tab.active{background:var(--gold);color:#080e1a;border-color:var(--gold);}
+
+/* SUMMARY */
+.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:10px 12px;}
+.sbox{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:9px 6px;text-align:center;}
+.snum{font-family:"Baloo 2",cursive;font-size:16px;font-weight:800;line-height:1;}
+.slbl{font-size:9px;color:var(--muted);margin-top:2px;}
+.sbox:nth-child(2) .snum{color:var(--green);}
+.sbox:nth-child(3) .snum{color:var(--red);}
+.sbox:nth-child(4) .snum{color:var(--gold);}
+
+/* CAT TABS */
+.cat-scroll{display:flex;gap:5px;padding:0 12px 10px;overflow-x:auto;scrollbar-width:none;}
+.cat-scroll::-webkit-scrollbar{display:none;}
+.cat-tab{flex-shrink:0;padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;white-space:nowrap;transition:all .18s;}
+.cat-tab.active{color:#fff;border-color:transparent;}
+.cat-tab.active.c0{background:#1565c0;}.cat-tab.active.c1{background:#2e7d32;}
+.cat-tab.active.c2{background:#e65100;}.cat-tab.active.c3{background:#6a1b9a;}
+.cat-tab.active.c4{background:#b71c1c;}
+
+/* LIST */
+.list-hdr{display:flex;align-items:center;justify-content:space-between;padding:0 12px 8px;}
+.list-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;}
+.btn-row{display:flex;gap:5px;}
+.tbtn{display:flex;align-items:center;gap:4px;border:none;border-radius:18px;padding:6px 11px;font-size:11px;font-weight:700;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;white-space:nowrap;}
+.tbtn-blue{background:var(--blue);color:#fff;}
+.tbtn-red{background:var(--red);color:#fff;}
+.search-wrap{padding:0 12px 8px;}
+.si-wrap{position:relative;}
+.si{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 12px 9px 34px;color:var(--text);font-family:"Noto Sans Devanagari",sans-serif;font-size:13px;outline:none;}
+.si:focus{border-color:var(--gold);}
+.si-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;}
+.filter-wrap{display:flex;gap:5px;padding:0 12px 10px;}
+.filter-btn{flex:1;padding:6px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;transition:all .15s;}
+.filter-btn.active-all{background:var(--card);color:var(--text);}
+.filter-btn.active-paid{background:rgba(0,200,150,.15);color:var(--green);border-color:var(--green);}
+.filter-btn.active-pending{background:rgba(255,77,109,.12);color:var(--red);border-color:var(--red);}
+.con-list{padding:0 12px 90px;}
+.con-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:9px;border-left:3px solid var(--border);transition:border-color .2s;}
+.con-card.paid{border-left-color:var(--green);}
+.con-card.pending{border-left-color:var(--red);}
+.cc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
+.cc-name{font-family:"Baloo 2",cursive;font-size:14px;font-weight:700;}
+.cc-rank{font-size:9px;min-width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface);color:var(--muted);flex-shrink:0;}
+.cc-amt{font-family:"Baloo 2",cursive;font-size:18px;font-weight:800;color:var(--gold);margin-bottom:6px;}
+.cc-amt span{font-size:11px;color:var(--muted);font-weight:400;}
+.cc-chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px;}
+.chip{font-size:10px;padding:2px 7px;border-radius:12px;}
+.chip-acc{background:rgba(33,150,243,.12);color:#64b5f6;cursor:pointer;text-decoration:underline;}
+.chip-ph{background:rgba(0,200,150,.1);color:var(--green);}
+.chip-addr{background:rgba(255,255,255,.05);color:var(--muted);}
+.cc-extra{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;}
+.cc-bot{display:flex;align-items:center;justify-content:space-between;}
+.sbadge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:14px;}
+.sb-paid{background:rgba(0,200,150,.15);color:var(--green);border:1px solid rgba(0,200,150,.3);}
+.sb-pending{background:rgba(255,77,109,.12);color:var(--red);border:1px solid rgba(255,77,109,.2);}
+.act-btns{display:flex;gap:5px;}
+.abtn{padding:4px 10px;border-radius:7px;font-size:10px;font-weight:600;border:none;cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;}
+.abtn-pay{background:rgba(0,200,150,.2);color:var(--green);border:1px solid rgba(0,200,150,.3);}
+.abtn-rmk{background:rgba(255,140,66,.15);color:var(--orange);border:1px solid rgba(255,140,66,.25);}
+.cc-info{font-size:10px;margin-top:4px;padding-top:4px;border-top:1px solid var(--border);}
+.cc-rem{font-size:10px;color:var(--muted);font-style:italic;margin-top:3px;}
+.cc-updby{font-size:9px;color:#1e3050;margin-top:2px;}
+.empty{text-align:center;padding:48px 20px;}
+.empty-ico{font-size:42px;margin-bottom:10px;}
+.empty-t{font-size:15px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.empty-s{font-size:11px;color:var(--border);}
+.main-scroll{flex:1;overflow-y:auto;}
+
+/* LOADER */
+.loading-overlay{position:fixed;inset:0;z-index:900;background:rgba(6,17,31,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;}
+.loading-overlay.hidden{display:none;}
+.spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:sp .8s linear infinite;}
+.loading-text{font-size:13px;color:var(--muted);}
+
+/* MODALS */
+.moverlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.82);backdrop-filter:blur(6px);display:flex;align-items:flex-end;opacity:0;pointer-events:none;transition:opacity .25s;}
+.moverlay.open{opacity:1;pointer-events:all;}
+.msheet{background:var(--surface);border-radius:22px 22px 0 0;width:100%;max-height:92vh;overflow-y:auto;border:1px solid var(--border);border-bottom:none;padding:6px 18px 36px;transform:translateY(100%);transition:transform .3s cubic-bezier(.32,.72,0,1);}
+.moverlay.open .msheet{transform:translateY(0);}
+.mhandle{width:34px;height:4px;border-radius:2px;background:var(--border);margin:8px auto 14px;}
+.mtitle{font-family:"Baloo 2",cursive;font-size:17px;font-weight:800;margin-bottom:18px;color:var(--gold2);}
+.fg{margin-bottom:12px;}
+.fg label{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px;display:block;}
+.fi,.fs,.fta{width:100%;background:var(--card);border:1px solid var(--border);border-radius:9px;padding:10px 12px;color:var(--text);font-family:"Noto Sans Devanagari",sans-serif;font-size:13px;outline:none;appearance:none;}
+.fta{resize:none;height:80px;}
+.stoggle{display:flex;gap:7px;}
+.topt{flex:1;padding:9px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;font-size:12px;font-weight:600;text-align:center;transition:all .15s;}
+.topt.sel-paid{background:rgba(0,200,150,.15);border-color:var(--green);color:var(--green);}
+.topt.sel-pending{background:rgba(255,77,109,.12);border-color:var(--red);color:var(--red);}
+.topt.sel-blue{background:rgba(33,150,243,.15);border-color:var(--blue);color:var(--blue);}
+.mfooter{display:flex;gap:8px;margin-top:16px;}
+.btn-cancel{flex:1;padding:12px;border-radius:11px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:"Noto Sans Devanagari",sans-serif;font-size:13px;font-weight:600;}
+.btn-save{flex:2;padding:12px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--gold),#c47a00);color:#080e1a;cursor:pointer;font-family:"Baloo 2",cursive;font-size:14px;font-weight:800;}
+.btn-green{background:linear-gradient(135deg,#00c896,#007a5e);color:#fff;}
+
+/* UPLOAD MODAL EXTRAS */
+.up-info-box{background:rgba(33,150,243,.08);border:1px solid rgba(33,150,243,.2);border-radius:10px;padding:11px 13px;margin-bottom:12px;font-size:11px;color:#90caf9;line-height:1.8;}
+.up-sel2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:22px 16px;text-align:center;cursor:pointer;background:var(--card);margin-bottom:12px;transition:border-color .2s;}
+.upload-zone.drag{border-color:var(--blue);}
+.uz-icon{font-size:28px;margin-bottom:5px;}
+.uz-t{font-size:13px;font-weight:700;margin-bottom:3px;}
+.uz-s{font-size:10px;color:var(--muted);}
+.preview-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px;max-height:150px;overflow-y:auto;}
+.prev-row{font-size:11px;padding:4px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:2fr 1fr 1fr;gap:4px;}
+.prev-row:last-child{border-bottom:none;}
+.pr-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.pr-acc{color:var(--muted);font-size:10px;}
+.pr-amt{color:var(--gold);text-align:right;}
+.warn-box{font-size:11px;color:var(--orange);background:rgba(255,140,66,.08);border:1px solid rgba(255,140,66,.2);border-radius:8px;padding:8px 11px;margin-bottom:10px;}
+.tmpl-btn{width:100%;padding:9px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:"Noto Sans Devanagari",sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:10px;transition:background .15s;}
+.tmpl-btn:hover{background:var(--card);}
+.rmk-info{background:var(--card);border-radius:10px;padding:10px 12px;margin-bottom:12px;border-left:3px solid var(--gold);}
+.rmk-name{font-family:"Baloo 2",cursive;font-size:15px;font-weight:700;margin-bottom:3px;}
+.rmk-amt{font-size:13px;color:var(--gold);font-weight:700;}
+
+/* TOAST */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);border-radius:11px;padding:11px 18px;font-size:12px;font-weight:600;color:var(--text);z-index:999;white-space:nowrap;box-shadow:0 8px 28px rgba(0,0,0,.4);transition:transform .3s,opacity .3s;opacity:0;}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+.toast.ok{border-color:var(--green);color:var(--green);}
+.toast.err{border-color:var(--red);color:var(--red);}
+.toast.inf{border-color:var(--blue);color:#64b5f6;}
+</style>
+</head>
+<body>
+
+<!-- LOADER -->
+<div class="loading-overlay" id="loader">
+  <div class="spinner"></div>
+  <div class="loading-text" id="loader-text">लोड हो रहा है...</div>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" class="screen">
+  <img class="login-logo"
+    src="https://upload.wikimedia.org/wikipedia/en/5/5b/Madhya_Pradesh_Poorv_Kshetra_Vidyut_Vitran_Company_logo.png"
+    alt="logo"
+    onerror="this.outerHTML='<div style=\'font-size:60px;margin-bottom:10px\'>&#9889;</div>'">
+  <div class="login-title">धूमा DC वसूली ट्रैकर</div>
+  <div class="login-sub">मध्यप्रदेश पूर्व क्षेत्र विद्युत वितरण कं. लि.</div>
+  <div class="login-card">
+    <label class="f-label">भूमिका चुनें</label>
+    <div class="role-cards">
+      <div class="role-card" id="rc-sup" onclick="selectRole('supervisor')">
+        <div class="role-card-icon">&#128084;</div>
+        <div class="role-card-title">Junior Engineer</div>
+        <div class="role-card-sub">कनिष्ठ अभियंता</div>
+      </div>
+      <div class="role-card" id="rc-lin" onclick="selectRole('lineman')">
+        <div class="role-card-icon">&#128295;</div>
+        <div class="role-card-title">Lineman</div>
+        <div class="role-card-sub">फील्ड कर्मचारी</div>
+      </div>
+    </div>
+    <div id="sup-fields" style="display:none;">
+      <label class="f-label">JE पासवर्ड</label>
+      <div class="pw-wrap">
+        <input type="password" class="f-input" id="sup-pw" placeholder="पासवर्ड डालें">
+        <button class="pw-eye" onclick="togglePw()">&#128065;</button>
+      </div>
+    </div>
+    <div id="lin-fields" style="display:none;">
+      <label class="f-label">हेडक्वार्टर</label>
+      <div class="sel-wrap">
+        <select id="hq-sel" class="f-select">
+          <option value="">-- HQ चुनें --</option>
+          <option>मकर्रझिर</option>
+          <option>धनककड़ी</option>
+          <option>बंजारी</option>
+          <option>बैगापिपरिया</option>
+          <option>बावली</option>
+          <option>नागनदेवरी</option>
+          <option>दरगडा</option>
+          <option>धूमा</option>
+        </select>
+      </div>
+    </div>
+    <label class="f-label">आपका नाम</label>
+    <input type="text" id="uname-inp" class="f-input" placeholder="जैसे: राजेश कुमार">
+    <button class="login-btn" onclick="doLogin()">&#128272; प्रवेश करें</button>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="app-screen" class="screen">
+  <div class="sync-bar">
+    <div class="sdot" id="sdot"></div>
+    <span class="stxt" id="stxt">Live Sync</span>
+    <span class="stime" id="stime"></span>
+  </div>
+  <div class="app-header">
+    <div class="hdr1">
+      <div class="hdr-left">
+        <button id="back-btn" onclick="goBack()"
+          style="background:none;border:none;color:#f0a500;font-size:26px;cursor:pointer;padding:0 4px;line-height:1;font-weight:bold;">&#8592;</button>
+        <div class="hdr-icon">&#9889;</div>
+        <div>
+          <div class="hdr-title">वसूली ट्रैकर</div>
+          <div class="hdr-sub" id="hdr-sub">धूमा DC</div>
+        </div>
+      </div>
+      <div class="hdr-right">
+        <button class="hbtn" style="background:#c62828;color:#fff;" onclick="downloadPDF()">&#128196; PDF</button>
+        <button class="hbtn" style="background:#2e7d32;color:#fff;" onclick="downloadExcel()">&#128202; Excel</button>
+        <div class="user-pill" onclick="toggleUserMenu(event)">
+          <div class="udot" id="udot">J</div>
+          <span class="uname" id="uname-disp">User</span>
+          <span style="font-size:10px;color:var(--muted);margin-left:2px;">&#9660;</span>
+          <div class="logout-menu" id="logout-menu">
+            <div class="user-info-item" id="user-info-menu">---</div>
+            <div class="logout-item" onclick="doLogout()">&#128682; लॉगआउट करें</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="hq-scroll" id="hq-tabs"></div>
+  </div>
+
+  <div class="main-scroll">
+    <div class="summary" id="summary"></div>
+    <div class="cat-scroll" id="cat-tabs"></div>
+    <div class="list-hdr">
+      <span class="list-title" id="list-title">सूची</span>
+      <div class="btn-row" id="action-btns"></div>
+    </div>
+    <div class="search-wrap">
+      <div class="si-wrap">
+        <span class="si-icon">&#128269;</span>
+        <input type="text" class="si" id="search-inp"
+          placeholder="नाम या Consumer No. खोजें..." oninput="renderList()">
+      </div>
+    </div>
+    <div class="filter-wrap">
+      <button class="filter-btn active-all" data-f="all" onclick="setFilter(this)">सभी</button>
+      <button class="filter-btn" data-f="pending" onclick="setFilter(this)">&#9203; बाकी</button>
+      <button class="filter-btn" data-f="paid" onclick="setFilter(this)">&#10004; वसूल</button>
+    </div>
+    <div class="con-list" id="con-list"></div>
+  </div>
+</div>
+
+<!-- UPLOAD MODAL -->
+<div class="moverlay" id="up-overlay" onclick="closeUpOutside(event)">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle">&#128228; लिस्ट अपलोड करें</div>
+    <div class="up-info-box">
+      <b>&#128187; Computer:</b> Click करें या Drag &amp; Drop<br>
+      <b>&#128241; Mobile:</b> Files/Downloads से select करें<br>
+      <b>जरूरी columns:</b> Consumer No, Consumer Name, Net Bill<br>
+      <b>अधिकतम:</b> 500 records प्रति HQ/Category
+    </div>
+    <button class="tmpl-btn" onclick="dlTemplate()">&#11015; Template CSV डाउनलोड करें</button>
+    <div class="up-sel2">
+      <div class="fg" style="margin:0;"><label>HQ *</label>
+        <div class="sel-wrap" style="margin:0;"><select class="fs" id="up-hq"></select></div>
+      </div>
+      <div class="fg" style="margin:0;"><label>Category *</label>
+        <div class="sel-wrap" style="margin:0;">
+          <select class="fs" id="up-cat">
+            <option value="">-- चुनें --</option>
+            <option>घरेलू</option><option>व्यवसाय</option><option>कृषि</option>
+            <option>गवर्नमेंट</option><option>इंडस्ट्रियल</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="fg"><label>मोड</label>
+      <div class="stoggle">
+        <button class="topt sel-pending" id="mode-rep" onclick="setUpMode('replace')">&#128260; Replace</button>
+        <button class="topt" id="mode-mrg" onclick="setUpMode('merge')">&#10133; Merge</button>
+      </div>
+    </div>
+    <div class="upload-zone" id="up-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="dOver(event)" ondragleave="dLeave()" ondrop="dDrop(event)">
+      <div class="uz-icon" id="uz-ico">&#128194;</div>
+      <div class="uz-t" id="uz-t">CSV या Excel फ़ाइल चुनें</div>
+      <div class="uz-s">&#128187; Drag &amp; Drop | &#128241; Files app से select करें</div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls,*/*" style="display:none;"
+      onchange="handleFile(this.files[0])">
+    <div id="up-preview" style="display:none;">
+      <div class="warn-box" id="up-warn" style="display:none;"></div>
+      <div class="preview-box">
+        <div style="font-size:10px;color:var(--muted);font-weight:600;margin-bottom:6px;" id="prev-title">पूर्वावलोकन</div>
+        <div id="prev-rows"></div>
+      </div>
+    </div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeUpModal()">रद्द करें</button>
+      <button class="btn-save btn-green" id="btn-up-ok" onclick="confirmUpload()" disabled
+        style="opacity:.5;">&#128228; अपलोड करें</button>
+    </div>
+  </div>
+</div>
+
+<!-- REMARK MODAL -->
+<div class="moverlay" id="rmk-overlay" onclick="closeRmkOutside(event)">
+  <div class="msheet">
+    <div class="mhandle"></div>
+    <div class="mtitle">&#9999; रिमार्क अपडेट</div>
+    <input type="hidden" id="rmk-key">
+    <div class="rmk-info">
+      <div class="rmk-name" id="rmk-name"></div>
+      <div class="rmk-amt" id="rmk-amt"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;" id="rmk-acc"></div>
+    </div>
+    <div class="fg"><label>स्थिति</label>
+      <div class="stoggle">
+        <button class="topt sel-pending" id="rs-pending" onclick="setRmkStatus('pending')">&#9203; बाकी है</button>
+        <button class="topt" id="rs-paid" onclick="setRmkStatus('paid')">&#10004; वसूल हुआ</button>
+      </div>
+    </div>
+    <div class="fg" id="rmk-paydate-grp" style="display:none;">
+      <label>भुगतान तिथि</label>
+      <input type="date" class="fi" id="rmk-paydate">
+    </div>
+    <div class="fg"><label>रिमार्क / टिप्पणी</label>
+      <textarea class="fta" id="rmk-text" placeholder="जैसे: घर पर नहीं मिले..."></textarea>
+    </div>
+    <div class="mfooter">
+      <button class="btn-cancel" onclick="closeRmkModal()">रद्द करें</button>
+      <button class="btn-save" onclick="saveRmk()">&#128190; सेव करें</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+var HQS  = ["मकर्रझिर","धनककड़ी","बंजारी","बैगापिपरिया","बावली","नागनदेवरी","दरगडा","धूमा"];
+var CATS = ["घरेलू","व्यवसाय","कृषि","गवर्नमेंट","इंडस्ट्रियल"];
+var CICO = ["🏠","🏪","🌾","🏛️","🏭"];
+var ROW_LIMIT = 500;   // <── max records per upload
+var SUP_PW   = "bijli@2025";
+var FB       = "https://adegaon-dc-top-50-default-rtdb.firebaseio.com/dhuma";
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+var CU = null, activeHQ = "", activeCat = "घरेलू", activeFilter = "all";
+var upMode = "replace", parsedRows = [], selectedRole = "", rmkStatus = "pending";
+var pollTimer = null;
+var CACHE = {};
+
+// ─── CACHE ───────────────────────────────────────────────────────────────────
+function cKey(hq,cat){return hq+"__"+cat;}
+function cGet(hq,cat){return CACHE[cKey(hq,cat)]||[];}
+function cSet(hq,cat,d){CACHE[cKey(hq,cat)]=d;}
+
+// ─── FIREBASE HELPERS ─────────────────────────────────────────────────────────
+function fbPath(hq,cat){
+  return hq.replace(/\s/g,"_").replace(/\//g,"_")+"/"+cat.replace(/\s/g,"_");
+}
+
+function fbGet(hq,cat,cb){
+  var cached=cGet(hq,cat);
+  if(cached.length) cb(cached);
+  fetch(FB+"/"+fbPath(hq,cat)+".json?t="+Date.now())
+    .then(function(r){return r.json();})
+    .then(function(d){
+      var data=!d?[]:(Array.isArray(d)?d:Object.values(d).filter(Boolean));
+      cSet(hq,cat,data); cb(data); setSyncStatus(true);
+    })
+    .catch(function(){
+      if(!cached.length) cb([]);
+      setSyncStatus(false);
+    });
+}
+
+function fbSet(hq,cat,arr,cb){
+  cSet(hq,cat,arr);
+  fetch(FB+"/"+fbPath(hq,cat)+".json",{
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(arr)
+  }).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    updTime(); setSyncStatus(true);
+    if(cb) cb(true);
+  }).catch(function(e){
+    toast("Save error: "+e.message,"err");
+    if(cb) cb(false);
+  });
+}
+
+function fbDel(hq,cat,cb){
+  cSet(hq,cat,[]);
+  fetch(FB+"/"+fbPath(hq,cat)+".json",{method:"DELETE"})
+    .then(function(){if(cb)cb();})
+    .catch(function(){if(cb)cb();});
+}
+
+function startListen(hq,cat){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer=setInterval(function(){
+    fetch(FB+"/"+fbPath(hq,cat)+".json?t="+Date.now())
+      .then(function(r){return r.json();})
+      .then(function(d){
+        var data=!d?[]:(Array.isArray(d)?d:Object.values(d).filter(Boolean));
+        cSet(hq,cat,data);
+        renderSummaryWith(data);
+        renderListWith(data);
+        setSyncStatus(true); updTime();
+      }).catch(function(){setSyncStatus(false);});
+  },8000);
+}
+
+// ─── UI HELPERS ───────────────────────────────────────────────────────────────
+function showLoader(t){
+  document.getElementById("loader-text").textContent=t||"लोड हो रहा है...";
+  document.getElementById("loader").classList.remove("hidden");
+}
+function hideLoader(){document.getElementById("loader").classList.add("hidden");}
+
+function toast(msg,type){
+  var t=document.getElementById("toast");
+  t.textContent=msg; t.className="toast show "+(type||"");
+  clearTimeout(t._t);
+  t._t=setTimeout(function(){t.classList.remove("show");},3500);
+}
+
+function setSyncStatus(ok){
+  var d=document.getElementById("sdot"),t=document.getElementById("stxt");
+  if(!d)return;
+  d.className=ok?"sdot":"sdot off";
+  t.className=ok?"stxt":"stxt off";
+  t.textContent=ok?"Live Sync ✓":"ऑफलाइन";
+}
+
+function updTime(){
+  var now=new Date(),el=document.getElementById("stime");
+  if(el) el.textContent=now.getHours()+":"+String(now.getMinutes()).padStart(2,"0");
+}
+
+window.addEventListener("online",function(){setSyncStatus(true);});
+window.addEventListener("offline",function(){setSyncStatus(false);});
+
+// ─── USER MENU ────────────────────────────────────────────────────────────────
+function toggleUserMenu(e){
+  e.stopPropagation();
+  document.getElementById("logout-menu").classList.toggle("open");
+}
+document.addEventListener("click",function(){
+  var m=document.getElementById("logout-menu");
+  if(m) m.classList.remove("open");
+});
+
+// ─── BACK BUTTON ─────────────────────────────────────────────────────────────
+function goBack(){
+  if(document.getElementById("rmk-overlay").classList.contains("open")){closeRmkModal();return;}
+  if(document.getElementById("up-overlay").classList.contains("open")){closeUpModal();return;}
+  if(activeFilter!=="all"){
+    activeFilter="all";
+    document.querySelectorAll(".filter-btn").forEach(function(b){b.className="filter-btn";});
+    document.querySelector("[data-f='all']").className="filter-btn active-all";
+    fbGet(activeHQ,activeCat,function(d){renderListWith(d);});
+    return;
+  }
+  if(activeCat!=="घरेलू"){
+    activeCat="घरेलू"; activeFilter="all";
+    buildCatTabs();
+    fbGet(activeHQ,activeCat,function(d){renderSummaryWith(d);renderListWith(d);});
+    startListen(activeHQ,activeCat);
+    return;
+  }
+  if(CU&&CU.role==="supervisor"){
+    var idx=HQS.indexOf(activeHQ);
+    if(idx>0){
+      activeHQ=HQS[idx-1];
+      buildHQTabs();
+      fbGet(activeHQ,activeCat,function(d){renderSummaryWith(d);renderListWith(d);});
+      startListen(activeHQ,activeCat);
+    }
+  }
+}
+
+// ─── LOGIN ────────────────────────────────────────────────────────────────────
+function selectRole(r){
+  selectedRole=r;
+  document.getElementById("rc-sup").classList.toggle("selected",r==="supervisor");
+  document.getElementById("rc-lin").classList.toggle("selected",r==="lineman");
+  document.getElementById("sup-fields").style.display=r==="supervisor"?"block":"none";
+  document.getElementById("lin-fields").style.display=r==="lineman"?"block":"none";
+}
+
+function togglePw(){
+  var i=document.getElementById("sup-pw");
+  i.type=i.type==="password"?"text":"password";
+}
+
+function doLogin(){
+  var role=selectedRole,name=document.getElementById("uname-inp").value.trim();
+  if(!role){toast("भूमिका चुनें","err");return;}
+  if(!name){toast("अपना नाम लिखें","err");return;}
+  if(role==="supervisor"){
+    if(document.getElementById("sup-pw").value!==SUP_PW){toast("गलत पासवर्ड!","err");return;}
+    CU={role:role,name:name,hq:HQS[0]};
+  } else {
+    var hq=document.getElementById("hq-sel").value;
+    if(!hq){toast("HQ चुनें","err");return;}
+    CU={role:role,name:name,hq:hq};
+  }
+  activeHQ=CU.hq; activeCat="घरेलू"; activeFilter="all";
+  document.getElementById("login-screen").classList.remove("active");
+  document.getElementById("app-screen").classList.add("active");
+  buildUI();
+  showLoader("डेटा लोड हो रहा है...");
+  fbGet(activeHQ,activeCat,function(data){
+    renderSummaryWith(data); renderListWith(data);
+    startListen(activeHQ,activeCat);
+    hideLoader();
+    toast("स्वागत है "+name+"! 🙏","ok");
+  });
+}
+
+function doLogout(){
+  if(!confirm("लॉगआउट करना चाहते हैं?"))return;
+  if(pollTimer){clearInterval(pollTimer);pollTimer=null;}
+  CU=null; selectedRole="";
+  document.getElementById("app-screen").classList.remove("active");
+  document.getElementById("login-screen").classList.add("active");
+  document.getElementById("uname-inp").value="";
+  document.getElementById("sup-pw").value="";
+  document.getElementById("hq-sel").value="";
+  document.getElementById("rc-sup").classList.remove("selected");
+  document.getElementById("rc-lin").classList.remove("selected");
+  document.getElementById("sup-fields").style.display="none";
+  document.getElementById("lin-fields").style.display="none";
+  document.getElementById("logout-menu").classList.remove("open");
+}
+
+// ─── BUILD UI ─────────────────────────────────────────────────────────────────
+function buildUI(){
+  var dot=document.getElementById("udot");
+  dot.textContent=CU.name[0].toUpperCase();
+  dot.className="udot "+(CU.role==="supervisor"?"sup":"lin");
+  document.getElementById("uname-disp").textContent=CU.name;
+  document.getElementById("hdr-sub").textContent=
+    CU.role==="supervisor"?"JE | सभी HQ":"Lineman | "+CU.hq;
+  var info=document.getElementById("user-info-menu");
+  if(info) info.textContent=(CU.role==="supervisor"?"👨‍💼 JE":"🔧 Lineman")+" | "+CU.hq+" | "+CU.name;
+  buildHQTabs(); buildCatTabs(); buildActionBtns();
+}
+
+function buildHQTabs(){
+  var c=document.getElementById("hq-tabs"); c.innerHTML="";
+  var hqs=CU.role==="supervisor"?HQS:[CU.hq];
+  hqs.forEach(function(hq){
+    var b=document.createElement("button");
+    b.className="hq-tab"+(hq===activeHQ?" active":"");
+    b.textContent=hq;
+    b.onclick=function(){
+      activeHQ=hq; activeFilter="all"; buildHQTabs();
+      showLoader();
+      fbGet(activeHQ,activeCat,function(data){
+        renderSummaryWith(data); renderListWith(data);
+        startListen(activeHQ,activeCat); hideLoader();
+      });
+    };
+    c.appendChild(b);
+  });
+}
+
+function buildCatTabs(){
+  var c=document.getElementById("cat-tabs"); c.innerHTML="";
+  CATS.forEach(function(cat,i){
+    var b=document.createElement("button");
+    b.className="cat-tab"+(cat===activeCat?" active c"+i:"");
+    b.onclick=function(){
+      activeCat=cat; activeFilter="all";
+      document.querySelectorAll(".filter-btn").forEach(function(x){x.className="filter-btn";});
+      document.querySelector("[data-f='all']").className="filter-btn active-all";
+      buildCatTabs(); showLoader();
+      fbGet(activeHQ,activeCat,function(data){
+        renderSummaryWith(data); renderListWith(data);
+        startListen(activeHQ,activeCat); hideLoader();
+      });
+    };
+    b.textContent=CICO[i]+" "+cat;
+    c.appendChild(b);
+  });
+}
+
+function buildActionBtns(){
+  var c=document.getElementById("action-btns"); c.innerHTML="";
+  var b1=document.createElement("button");
+  b1.className="tbtn tbtn-blue";
+  b1.innerHTML="📤 अपलोड";
+  b1.onclick=openUpModal;
+  c.appendChild(b1);
+  if(CU.role==="supervisor"){
+    var b2=document.createElement("button");
+    b2.className="tbtn tbtn-red";
+    b2.innerHTML="🗑️ हटाएं";
+    b2.onclick=clearList;
+    c.appendChild(b2);
+  }
+}
+
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+function renderSummaryWith(data){
+  var tot=0,paid=0,pend=0,pendAmt=0;
+  data.forEach(function(c){
+    tot++;
+    if(c.status==="paid") paid++;
+    else{pend++;pendAmt+=Number(c.amount)||0;}
+  });
+  var fmt=function(a){
+    return a>=100000?"₹"+(a/100000).toFixed(1)+"L":a>=1000?"₹"+(a/1000).toFixed(1)+"K":"₹"+a;
+  };
+  document.getElementById("summary").innerHTML=
+    "<div class='sbox'><div class='snum'>"+tot+"</div><div class='slbl'>"+activeCat+"</div></div>"+
+    "<div class='sbox'><div class='snum'>"+paid+"</div><div class='slbl'>✓ वसूल</div></div>"+
+    "<div class='sbox'><div class='snum'>"+pend+"</div><div class='slbl'>✗ बाकी</div></div>"+
+    "<div class='sbox'><div class='snum'>"+fmt(pendAmt)+"</div><div class='slbl'>बाकी राशि</div></div>";
+  document.getElementById("list-title").textContent=activeHQ+" › "+activeCat;
+}
+
+function setFilter(btn){
+  activeFilter=btn.dataset.f;
+  document.querySelectorAll(".filter-btn").forEach(function(b){b.className="filter-btn";});
+  btn.className="filter-btn active-"+activeFilter;
+  fbGet(activeHQ,activeCat,function(d){renderListWith(d);});
+}
+function renderList(){fbGet(activeHQ,activeCat,function(d){renderListWith(d);});}
+
+function renderListWith(data){
+  var q=(document.getElementById("search-inp").value||"").toLowerCase().trim();
+  var c=document.getElementById("con-list");
+  var filtered=data.filter(function(x){
+    return(!q||(x.name||"").toLowerCase().includes(q)||(x.acc||"").toLowerCase().includes(q))&&
+           (activeFilter==="all"||x.status===activeFilter);
+  });
+  if(!filtered.length){
+    c.innerHTML="<div class='empty'><div class='empty-ico'>"+(q?"🔍":"📋")+"</div>"+
+      "<div class='empty-t'>"+(q?"कोई परिणाम नहीं":"सूची खाली है")+"</div>"+
+      "<div class='empty-s'>📤 अपलोड बटन से लिस्ट डालें</div></div>";
+    return;
+  }
+  c.innerHTML=filtered.map(function(x){
+    var oi=data.indexOf(x), isPaid=x.status==="paid";
+    return "<div class='con-card "+(isPaid?"paid":"pending")+"'>"+
+      "<div class='cc-top'><div class='cc-name'>"+esc(x.name)+"</div>"+
+        "<div class='cc-rank'>#"+(oi+1)+"</div></div>"+
+      "<div class='cc-amt'>₹"+Number(x.amount).toLocaleString("hi-IN")+" <span>बकाया</span></div>"+
+      "<div class='cc-chips'>"+
+        (x.acc?"<span class='chip chip-acc' onclick=\"window.open('https://billing.mpez.co.in','_blank')\">📄 "+esc(x.acc)+"</span>":"")+
+        (x.phone?"<span class='chip chip-ph'>📞 "+esc(x.phone)+"</span>":"")+
+        (x.addr?"<span class='chip chip-addr'>📍 "+esc(x.addr)+"</span>":"")+
+      "</div>"+
+      "<div class='cc-extra'>"+
+        (x.tariff?"<span style='font-size:10px;padding:2px 7px;border-radius:12px;background:rgba(255,152,0,.12);color:#ffb74d;'>⚡ "+esc(x.tariff)+"</span>":"")+
+        (x.load?"<span style='font-size:10px;padding:2px 7px;border-radius:12px;background:rgba(33,150,243,.1);color:#64b5f6;'>🔌 "+esc(x.load)+"</span>":"")+
+        (x.unit?"<span style='font-size:10px;padding:2px 7px;border-radius:12px;background:rgba(0,200,150,.08);color:#4db6ac;'>📊 "+esc(x.unit)+"</span>":"")+
+      "</div>"+
+      "<div class='cc-bot'>"+
+        "<span class='sbadge "+(isPaid?"sb-paid":"sb-pending")+"'>"+(isPaid?"✅ वसूल":"⏳ बाकी")+"</span>"+
+        "<div class='act-btns'>"+
+          "<button class='abtn abtn-rmk' onclick='openRmkModal("+oi+")'>✏️ रिमार्क</button>"+
+          (!isPaid?"<button class='abtn abtn-pay' onclick='markPaid("+oi+")'>✓ वसूल</button>":"")+
+        "</div>"+
+      "</div>"+
+      "<div class='cc-info'>"+
+        (x.lastPaidAmt&&x.lastPaidAmt!="0"?
+          "<span style='color:#7986cb;'>📅 पिछला: ₹"+Number(x.lastPaidAmt).toLocaleString("hi-IN")+
+          (x.lastPayDate?" ("+esc(x.lastPayDate)+")":"")+"</span>":"")+
+        (x.paydate?"<span style='color:var(--green);margin-left:8px;'>💰 वसूल: "+esc(x.paydate)+"</span>":"")+
+      "</div>"+
+      (x.remarks?"<div class='cc-rem'>💬 "+esc(x.remarks)+"</div>":"")+
+      (x.updatedBy?"<div class='cc-updby'>🔄 "+esc(x.updatedBy)+"</div>":"")+
+    "</div>";
+  }).join("");
+}
+
+function esc(s){
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ─── MARK PAID ────────────────────────────────────────────────────────────────
+function markPaid(idx){
+  var d=cGet(activeHQ,activeCat);
+  if(!d[idx])return;
+  d[idx].status="paid";
+  d[idx].paydate=new Date().toLocaleDateString("hi-IN");
+  d[idx].updatedBy=CU.name;
+  d[idx].updatedAt=new Date().toLocaleString("hi-IN");
+  cSet(activeHQ,activeCat,d);
+  renderSummaryWith(d); renderListWith(d);
+  toast("✅ वसूली दर्ज!","ok");
+  fbSet(activeHQ,activeCat,d,null);
+}
+
+// ─── CLEAR LIST ───────────────────────────────────────────────────────────────
+function clearList(){
+  if(!confirm(activeHQ+" › "+activeCat+" की पूरी लिस्ट हटाएं? यह वापस नहीं होगा।"))return;
+  cSet(activeHQ,activeCat,[]);
+  renderSummaryWith([]); renderListWith([]);
+  toast("🗑️ लिस्ट हटाई गई","inf");
+  fbDel(activeHQ,activeCat,null);
+}
+
+// ─── REMARK MODAL ────────────────────────────────────────────────────────────
+function openRmkModal(idx){
+  var d=cGet(activeHQ,activeCat);
+  var x=d[idx]; if(!x)return;
+  document.getElementById("rmk-key").value=idx;
+  document.getElementById("rmk-name").textContent=x.name;
+  document.getElementById("rmk-amt").textContent="₹"+Number(x.amount).toLocaleString("hi-IN")+" बकाया";
+  document.getElementById("rmk-acc").textContent="Consumer No: "+x.acc;
+  document.getElementById("rmk-text").value=x.remarks||"";
+  document.getElementById("rmk-paydate").value=x.paydate||"";
+  setRmkStatus(x.status||"pending");
+  document.getElementById("rmk-overlay").classList.add("open");
+}
+function closeRmkModal(){document.getElementById("rmk-overlay").classList.remove("open");}
+function closeRmkOutside(e){if(e.target===document.getElementById("rmk-overlay"))closeRmkModal();}
+
+function setRmkStatus(s){
+  rmkStatus=s;
+  document.getElementById("rs-pending").className="topt"+(s==="pending"?" sel-pending":"");
+  document.getElementById("rs-paid").className="topt"+(s==="paid"?" sel-paid":"");
+  document.getElementById("rmk-paydate-grp").style.display=s==="paid"?"block":"none";
+}
+
+function saveRmk(){
+  var idx=parseInt(document.getElementById("rmk-key").value);
+  var d=cGet(activeHQ,activeCat);
+  if(!d[idx])return;
+  d[idx].status=rmkStatus;
+  d[idx].remarks=document.getElementById("rmk-text").value.trim();
+  if(rmkStatus==="paid")
+    d[idx].paydate=document.getElementById("rmk-paydate").value||new Date().toLocaleDateString("hi-IN");
+  d[idx].updatedBy=CU.name;
+  d[idx].updatedAt=new Date().toLocaleString("hi-IN");
+  cSet(activeHQ,activeCat,d);
+  closeRmkModal();
+  renderSummaryWith(d); renderListWith(d);
+  toast("✅ रिमार्क सेव!","ok");
+  fbSet(activeHQ,activeCat,d,null);
+}
+
+// ─── UPLOAD MODAL ─────────────────────────────────────────────────────────────
+function openUpModal(){
+  var sel=document.getElementById("up-hq"); sel.innerHTML="";
+  var hqs=CU.role==="supervisor"?HQS:[CU.hq];
+  hqs.forEach(function(hq){
+    var o=document.createElement("option");o.value=hq;o.textContent=hq;sel.appendChild(o);
+  });
+  sel.value=activeHQ;
+  document.getElementById("up-cat").value=activeCat;
+  parsedRows=[];
+  document.getElementById("uz-ico").textContent="📂";
+  document.getElementById("uz-t").textContent="CSV या Excel फ़ाइल चुनें";
+  document.getElementById("file-input").value="";
+  document.getElementById("up-preview").style.display="none";
+  document.getElementById("btn-up-ok").disabled=true;
+  document.getElementById("btn-up-ok").style.opacity=".5";
+  setUpMode("replace");
+  document.getElementById("up-overlay").classList.add("open");
+}
+function closeUpModal(){document.getElementById("up-overlay").classList.remove("open");}
+function closeUpOutside(e){if(e.target===document.getElementById("up-overlay"))closeUpModal();}
+
+function setUpMode(m){
+  upMode=m;
+  document.getElementById("mode-rep").className="topt"+(m==="replace"?" sel-pending":"");
+  document.getElementById("mode-mrg").className="topt"+(m==="merge"?" sel-blue":"");
+}
+function dOver(e){e.preventDefault();document.getElementById("up-zone").classList.add("drag");}
+function dLeave(){document.getElementById("up-zone").classList.remove("drag");}
+function dDrop(e){e.preventDefault();dLeave();handleFile(e.dataTransfer.files[0]);}
+
+function handleFile(f){
+  if(!f)return;
+  document.getElementById("uz-ico").textContent="⏳";
+  document.getElementById("uz-t").textContent=f.name;
+  var n=f.name.toLowerCase();
+  if(n.endsWith(".xlsx")||n.endsWith(".xls")){
+    var rd=new FileReader();
+    rd.onload=function(e){
+      try{
+        var wb=XLSX.read(e.target.result,{type:"array"});
+        processRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:"",raw:false}));
+      }catch(ex){toast("Excel त्रुटि: "+ex.message,"err");}
+    };
+    rd.readAsArrayBuffer(f);
+  } else {
+    var rd2=new FileReader();
+    rd2.onload=function(e){
+      var result=Papa.parse(e.target.result,{header:true,skipEmptyLines:true});
+      if(result.data&&result.data.length) processRows(result.data);
+      else toast("CSV में data नहीं मिला","err");
+    };
+    rd2.readAsText(f,"UTF-8");
+  }
+}
+
+function processRows(rows){
+  var valid=[],errors=[];
+  rows.forEach(function(r,i){
+    var k={};
+    Object.keys(r).forEach(function(h){
+      var clean=h.toString().trim().toLowerCase().replace(/[^a-z0-9]/g,"");
+      k[clean]=String(r[h]).trim();
+    });
+    var name=(k["consumername"]||k["cname"]||k["name"]||"").trim();
+    var acc=(k["consumernumber"]||k["consumerno"]||k["accountno"]||k["ivrs"]||k["no"]||k["acc"]||"").trim();
+    var rawAmt=(k["netbill"]||k["netamt"]||k["netamount"]||k["amount"]||k["dues"]||k["arrear"]||k["balance"]||k["bill"]||"").replace(/,/g,"").replace(/[₹\s]/g,"").trim();
+    var phone=(k["mobileno"]||k["mobile"]||k["mobilenumber"]||k["phone"]||k["mob"]||"").trim();
+    var addr=(k["address"]||k["addr"]||k["adress"]||k["add"]||k["village"]||k["gram"]||"").trim();
+    var rem=(k["remark"]||k["remarks"]||k["note"]||"").trim();
+    var tariff=(k["tariff"]||k["tariffcode"]||k["tarrif"]||k["tarrifcode"]||"").trim();
+    var load=(k["load"]||k["sanctionedload"]||k["connectedload"]||"").trim();
+    var unit=(k["unit"]||k["units"]||k["consumption"]||"").trim();
+    var lastPayDate=(k["lastpaymentdate"]||k["lastpaydate"]||k["lastdate"]||"").trim();
+    var lastPaidAmt=(k["lastpaidamt"]||k["lastpaid"]||k["lastamt"]||k["lastpaidamount"]||"").replace(/,/g,"").replace(/[₹\s]/g,"").trim();
+    if(!name||!acc||!rawAmt||isNaN(rawAmt)||Number(rawAmt)<0) errors.push(i+2);
+    else valid.push({
+      name:name,acc:acc,amount:rawAmt,phone:phone,addr:addr,
+      remarks:rem,tariff:tariff,load:load,unit:unit,
+      lastPayDate:lastPayDate,lastPaidAmt:lastPaidAmt,
+      status:"pending",
+      uploadedBy:CU.name,
+      uploadedAt:new Date().toLocaleString("hi-IN")
+    });
+  });
+
+  // APPLY ROW LIMIT
+  var limited = valid.slice(0, ROW_LIMIT);
+  var trimmed = valid.length > ROW_LIMIT;
+  parsedRows = limited;
+
+  document.getElementById("up-preview").style.display="block";
+  var wb=document.getElementById("up-warn");
+  var warnParts=[];
+  if(errors.length) warnParts.push(errors.length+" rows skip (अधूरा डेटा, rows: "+errors.slice(0,5).join(",")+")");
+  if(trimmed) warnParts.push("केवल पहले "+ROW_LIMIT+" records लिए गए (limit: "+ROW_LIMIT+")");
+  wb.style.display=warnParts.length?"block":"none";
+  wb.textContent=warnParts.length?"⚠️ "+warnParts.join(" | "):"";
+
+  document.getElementById("prev-title").textContent="पूर्वावलोकन ("+parsedRows.length+" records)";
+  document.getElementById("prev-rows").innerHTML=parsedRows.slice(0,5).map(function(r,i){
+    return "<div class='prev-row'>"+
+      "<span class='pr-name'>"+(i+1)+". "+esc(r.name)+"</span>"+
+      "<span class='pr-acc'>"+esc(r.acc)+"</span>"+
+      "<span class='pr-amt'>₹"+Number(r.amount).toLocaleString("hi-IN")+"</span></div>";
+  }).join("");
+  document.getElementById("uz-ico").textContent=parsedRows.length?"✅":"❌";
+  document.getElementById("uz-t").textContent=parsedRows.length+" valid records";
+  if(parsedRows.length){
+    document.getElementById("btn-up-ok").disabled=false;
+    document.getElementById("btn-up-ok").style.opacity="1";
+  }
+}
+
+function confirmUpload(){
+  var hq=document.getElementById("up-hq").value;
+  var cat=document.getElementById("up-cat").value;
+  if(!hq){toast("HQ चुनें","err");return;}
+  if(!cat){toast("Category चुनें","err");return;}
+  if(!parsedRows.length){toast("कोई valid डेटा नहीं","err");return;}
+  var doSave=function(arr){
+    cSet(hq,cat,arr);
+    activeHQ=hq; activeCat=cat;
+    buildUI();
+    renderSummaryWith(arr); renderListWith(arr);
+    startListen(activeHQ,activeCat);
+    closeUpModal();
+    toast("✅ "+arr.length+" records अपलोड! 🔥","ok");
+    fbSet(hq,cat,arr,null);
+  };
+  if(upMode==="replace"){
+    doSave(parsedRows);
+  } else {
+    var ex=cGet(hq,cat);
+    var merged=ex.slice();
+    parsedRows.forEach(function(r){
+      if(!merged.find(function(e){return e.acc===r.acc;})) merged.push(r);
+    });
+    if(merged.length>ROW_LIMIT){
+      toast("⚠️ Merge के बाद "+merged.length+" records हैं, limit "+ROW_LIMIT+" तक क्लिप किया","inf");
+      merged=merged.slice(0,ROW_LIMIT);
+    }
+    doSave(merged);
+  }
+}
+
+// ─── EXPORT: EXCEL ────────────────────────────────────────────────────────────
+function downloadExcel(){
+  var data=cGet(activeHQ,activeCat);
+  if(!data.length){toast("कोई data नहीं","err");return;}
+  var rows=[["क्र.","नाम","Consumer No","बकाया","Tariff","Load","Unit","Mobile","पता","स्थिति","भुगतान तिथि","पिछला भुगतान","पिछला तिथि","रिमार्क","अपडेट by"]];
+  data.forEach(function(x,i){
+    rows.push([
+      i+1,x.name||"",x.acc||"",Number(x.amount)||0,
+      x.tariff||"",x.load||"",x.unit||"",x.phone||"",x.addr||"",
+      x.status==="paid"?"वसूल":"बाकी",
+      x.paydate||"",x.lastPaidAmt||"",x.lastPayDate||"",
+      x.remarks||"",x.updatedBy||""
+    ]);
+  });
+  var ws=XLSX.utils.aoa_to_sheet(rows);
+  ws["!cols"]=[{wch:4},{wch:20},{wch:14},{wch:10},{wch:8},{wch:8},{wch:6},{wch:13},{wch:18},{wch:8},{wch:13},{wch:12},{wch:13},{wch:25},{wch:14}];
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,activeHQ+"_"+activeCat);
+  XLSX.writeFile(wb,"धूमाDC_"+activeHQ+"_"+activeCat+"_"+new Date().toLocaleDateString("en-IN").replace(/\//g,"-")+".xlsx");
+  toast("📊 Excel download!","ok");
+}
+
+// ─── EXPORT: PDF ──────────────────────────────────────────────────────────────
+function downloadPDF(){
+  var data=cGet(activeHQ,activeCat);
+  if(!data.length){toast("कोई data नहीं","err");return;}
+  var paid=data.filter(function(x){return x.status==="paid";});
+  var pending=data.filter(function(x){return x.status!=="paid";});
+  var pendAmt=pending.reduce(function(s,x){return s+(Number(x.amount)||0);},0);
+  var paidAmt=paid.reduce(function(s,x){return s+(Number(x.amount)||0);},0);
+  var rows=data.map(function(x,i){
+    var isPaid=x.status==="paid";
+    return "<tr style='border-bottom:1px solid #ddd;background:"+(i%2===0?"#fff":"#f9f9f9")+";'>"+
+      "<td style='padding:5px;text-align:center;'>"+(i+1)+"</td>"+
+      "<td style='padding:5px;font-weight:600;'>"+x.name+"</td>"+
+      "<td style='padding:5px;color:#1565c0;'>"+x.acc+"</td>"+
+      "<td style='padding:5px;text-align:right;font-weight:700;'>₹"+Number(x.amount).toLocaleString("hi-IN")+"</td>"+
+      "<td style='padding:5px;'>"+( x.tariff||"-")+"</td>"+
+      "<td style='padding:5px;'>"+( x.load||"-")+"</td>"+
+      "<td style='padding:5px;text-align:center;font-weight:700;color:"+(isPaid?"#2e7d32":"#c62828")+"'>"+
+        (isPaid?"✓ वसूल":"✗ बाकी")+(x.paydate?"<br><small>"+x.paydate+"</small>":"")+
+      "</td>"+
+      "<td style='padding:5px;background:"+(x.remarks?"#fff8e1":"")+"'>"+( x.remarks||"-")+"</td>"+
+      "<td style='padding:5px;font-size:10px;color:#555;'>"+
+        (x.lastPaidAmt?"₹"+x.lastPaidAmt+(x.lastPayDate?"<br>"+x.lastPayDate:""):"-")+
+      "</td>"+
+    "</tr>";
+  }).join("");
+  var html="<!DOCTYPE html><html><head><meta charset='UTF-8'>"+
+    "<style>body{font-family:Arial,sans-serif;font-size:11px;margin:15px;}h2{color:#1a237e;}"+
+    ".info{display:flex;gap:12px;flex-wrap:wrap;background:#f5f5f5;padding:8px;border-radius:6px;margin:8px 0;}"+
+    ".ib{text-align:center;padding:4px 8px;}.ib b{font-size:15px;display:block;}"+
+    "table{width:100%;border-collapse:collapse;}th{background:#1a237e;color:#fff;padding:5px;}"+
+    "@media print{.np{display:none}}</style></head><body>"+
+    "<h2>धूमा DC वसूली रिपोर्ट</h2>"+
+    "<p>HQ: <b>"+activeHQ+"</b> | Category: <b>"+activeCat+"</b> | दिनांक: <b>"+new Date().toLocaleDateString("hi-IN")+"</b> | अधिकारी: <b>"+CU.name+"</b></p>"+
+    "<div class='info'>"+
+      "<div class='ib'><b>"+data.length+"</b>कुल</div>"+
+      "<div class='ib'><b style='color:green'>"+paid.length+"</b>वसूल</div>"+
+      "<div class='ib'><b style='color:red'>"+pending.length+"</b>बाकी</div>"+
+      "<div class='ib'><b style='color:green'>₹"+paidAmt.toLocaleString("hi-IN")+"</b>वसूल राशि</div>"+
+      "<div class='ib'><b style='color:red'>₹"+pendAmt.toLocaleString("hi-IN")+"</b>बाकी राशि</div>"+
+    "</div>"+
+    "<button class='np' onclick='window.print()' style='margin-bottom:8px;padding:6px 14px;background:#1a237e;color:#fff;border:none;border-radius:5px;cursor:pointer;'>🖨️ Print / PDF Save</button>"+
+    "<table><thead><tr>"+
+      "<th>#</th><th>नाम</th><th>Consumer No</th><th>बकाया</th><th>Tariff</th><th>Load</th><th>स्थिति</th><th>रिमार्क</th><th>पिछला भुगतान</th>"+
+    "</tr></thead><tbody>"+rows+"</tbody></table></body></html>";
+  var w=window.open("","_blank");
+  if(w){w.document.write(html);w.document.close();setTimeout(function(){w.print();},600);}
+  else toast("Popup block है, allow करें","inf");
+}
+
+// ─── TEMPLATE DOWNLOAD ────────────────────────────────────────────────────────
+function dlTemplate(){
+  var s="Consumer No,Consumer Name,Net Bill,Mobile No,Address,Remark,Tariff,Load,Unit,Last Payment Date,Last Paid Amt\n"+
+        "1234567890,राम लाल,5400,9876543210,मकर्रझिर,,घरेलू,1KW,1.00KW,15/03/2025,2500\n"+
+        "9876543210,श्याम कुमार,3200,9123456780,धूमा,,व्यवसाय,2KW,2.00KW,20/02/2025,1500\n";
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["\uFEFF"+s],{type:"text/csv;charset=utf-8;"}));
+  a.download="dhuma_vasuli_template.csv"; a.click();
+  toast("📥 Template डाउनलोड...","inf");
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+fetch(FB+"/.json?shallow=true&t="+Date.now())
+  .then(function(){setSyncStatus(true);})
+  .catch(function(){setSyncStatus(false);})
+  .finally(function(){
+    hideLoader();
+    document.getElementById("login-screen").classList.add("active");
+  });
+</script>
+</body>
+</html>
