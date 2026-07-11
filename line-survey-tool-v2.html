@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a2740">
+<title>लाइन सर्वे टूल v2 — 11kV / 33kV (Rules Engine + 3D)</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root{
+    --navy:#1a2740;--navy2:#24344f;--volt:#ffb400;--volt-dark:#c78900;
+    --paper:#f4f6f9;--card:#fff;--ink:#16202e;--muted:#5d6b80;--line:#dde3ec;
+    --ok:#1d9e58;--danger:#d43a3a;--radius:14px;font-size:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{font-family:"Segoe UI",Roboto,"Noto Sans Devanagari","Noto Sans",sans-serif;
+    background:var(--paper);color:var(--ink);display:flex;flex-direction:column;overflow:hidden}
+  button{font-family:inherit;border:none;cursor:pointer;background:none}
+  input,select,textarea{font-family:inherit;font-size:1rem}
+  header{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;
+    flex-shrink:0;box-shadow:0 2px 8px rgba(10,20,40,.25);z-index:1200}
+  header .bolt{width:34px;height:34px;border-radius:8px;background:var(--volt);display:flex;
+    align-items:center;justify-content:center;font-size:20px;flex-shrink:0;color:#1a2740;font-weight:800}
+  header h1{font-size:1.02rem;font-weight:700;line-height:1.2}
+  header .sub{font-size:.7rem;opacity:.75;letter-spacing:.04em}
+  header .back{color:#fff;font-size:1.5rem;padding:4px 8px;display:none}
+  .screen{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .screen.active{display:flex;flex-direction:column}
+  .wrap{padding:16px;max-width:640px;width:100%;margin:0 auto}
+  .hero{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-radius:var(--radius);
+    padding:18px 16px;margin-bottom:16px;position:relative;overflow:hidden}
+  .hero::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;
+    border:3px dashed rgba(255,180,0,.35);border-radius:50%}
+  .hero h2{font-size:1.15rem;margin-bottom:4px}
+  .hero p{font-size:.8rem;opacity:.8;line-height:1.5}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:15px;
+    border-radius:var(--radius);font-size:1.05rem;font-weight:700;transition:transform .08s}
+  .btn:active{transform:scale(.98)}
+  .btn-volt{background:var(--volt);color:#1a2740;box-shadow:0 3px 0 var(--volt-dark)}
+  .btn-navy{background:var(--navy);color:#fff}
+  .btn-ghost{background:#fff;color:var(--navy);border:2px solid var(--line)}
+  .btn-danger{background:#fdeaea;color:var(--danger);border:2px solid #f5c9c9}
+  .btn-sm{padding:9px 12px;font-size:.85rem;width:auto;border-radius:10px}
+  .sec-label{font-size:.72rem;font-weight:700;letter-spacing:.09em;color:var(--muted);
+    text-transform:uppercase;margin:18px 0 8px}
+  .survey-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:13px 14px;margin-bottom:10px;display:flex;align-items:center;gap:12px}
+  .kv-badge{flex-shrink:0;width:52px;height:52px;border-radius:10px;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;font-weight:800;font-size:1rem;line-height:1}
+  .kv-11{background:#e8f1ff;color:#1b5cc4}.kv-33{background:#fff3d6;color:#a06a00}
+  .kv-badge small{font-size:.55rem;font-weight:700;margin-top:2px;opacity:.8}
+  .survey-card .meta{flex:1;min-width:0}
+  .survey-card .meta b{display:block;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .survey-card .meta span{font-size:.75rem;color:var(--muted)}
+  .survey-card .open{color:var(--navy);font-size:1.3rem;padding:6px}
+  .empty{text-align:center;color:var(--muted);font-size:.85rem;padding:26px 10px;
+    border:2px dashed var(--line);border-radius:var(--radius);line-height:1.6}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:.8rem;font-weight:700;margin-bottom:6px;color:var(--navy)}
+  .field input,.field select,.field textarea{width:100%;padding:12px;border:2px solid var(--line);
+    border-radius:10px;background:#fff}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--volt)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .seg{display:flex;border:2px solid var(--line);border-radius:10px;overflow:hidden}
+  .seg button{flex:1;padding:12px;font-weight:700;background:#fff;color:var(--muted)}
+  .seg button.on{background:var(--navy);color:#fff}
+  .hint{font-size:.72rem;color:var(--muted);margin-top:4px;line-height:1.4}
+  #screen-survey{overflow:hidden}
+  .statbar{display:grid;grid-template-columns:repeat(4,1fr);background:var(--navy);color:#fff;flex-shrink:0}
+  .statbar .st{padding:8px 4px;text-align:center;border-right:1px solid rgba(255,255,255,.12)}
+  .statbar .st:last-child{border-right:none}
+  .statbar .st b{display:block;font-size:1.05rem;color:var(--volt)}
+  .statbar .st span{font-size:.6rem;opacity:.8}
+  #map{flex:1;min-height:0;z-index:1}
+  .maptools{position:absolute;top:10px;right:10px;z-index:1000;display:flex;flex-direction:column;gap:8px}
+  .maptools button{width:42px;height:42px;border-radius:10px;background:#fff;font-size:1.15rem;
+    box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .maptools button.on{background:var(--volt)}
+  .capture-dock{flex-shrink:0;background:#fff;border-top:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:9px}
+  .type-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+  .type-chip{flex-shrink:0;padding:8px 12px;border-radius:999px;border:2px solid var(--line);
+    background:#fff;font-size:.78rem;font-weight:700;color:var(--muted);white-space:nowrap}
+  .type-chip.on{border-color:var(--navy);background:var(--navy);color:#fff}
+  .dock-btns{display:flex;gap:8px}
+  #btnCapture{flex:1;position:relative}
+  #btnCapture .acc{font-size:.65rem;font-weight:600;opacity:.75;display:block}
+  .icon-btn{width:54px;border-radius:var(--radius);display:flex;align-items:center;justify-content:center;
+    font-size:1.25rem;background:#fff;border:2px solid var(--line);color:var(--navy)}
+  .gps-dot{position:absolute;top:8px;right:8px;width:10px;height:10px;border-radius:50%;background:#999}
+  .gps-dot.good{background:var(--ok)}.gps-dot.bad{background:var(--danger)}
+  .sheet-backdrop{position:fixed;inset:0;background:rgba(10,20,40,.45);z-index:1300;display:none}
+  .sheet-backdrop.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;max-height:78vh;background:#fff;border-radius:18px 18px 0 0;
+    z-index:1310;display:none;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+  .sheet.open{display:flex}
+  .sheet-head{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;
+    justify-content:space-between;flex-shrink:0}
+  .sheet-head b{font-size:.95rem}
+  .sheet-body{overflow-y:auto;padding:8px 12px calc(14px + env(safe-area-inset-bottom))}
+  .pt-row{display:flex;align-items:center;gap:10px;padding:10px 6px;border-bottom:1px solid var(--line)}
+  .pt-num{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;
+    justify-content:center;color:#fff;font-size:.72rem;font-weight:800}
+  .pt-row .info{flex:1;min-width:0}
+  .pt-row .info b{font-size:.85rem;display:block}
+  .pt-row .info span{font-size:.68rem;color:var(--muted);display:block}
+  .pt-row .acts{display:flex;gap:4px}
+  .pt-row .acts button{padding:7px 9px;font-size:1rem;border-radius:8px;background:var(--paper)}
+  .est-panel{background:linear-gradient(120deg,#fff8e6,#fff);border:2px solid var(--volt);
+    border-radius:var(--radius);padding:12px 14px;margin:12px 0}
+  .est-panel h3{font-size:.78rem;color:var(--volt-dark);letter-spacing:.06em;margin-bottom:8px}
+  .est-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .est-grid div b{font-size:1.15rem;display:block;color:var(--navy)}
+  .est-grid div span{font-size:.66rem;color:var(--muted)}
+  .boq{width:100%;border-collapse:collapse;font-size:.75rem;margin-top:8px}
+  .boq td{padding:5px 6px;border-bottom:1px solid var(--line)}
+  .boq td:last-child{text-align:right;font-weight:800;color:var(--navy)}
+  .toast{position:fixed;bottom:110px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+    padding:10px 18px;border-radius:999px;font-size:.82rem;font-weight:600;z-index:2000;opacity:0;
+    transition:opacity .25s;pointer-events:none;max-width:88vw;text-align:center}
+  .toast.show{opacity:1}
+  dialog{border:none;border-radius:var(--radius);padding:0;max-width:92vw;width:400px;
+    box-shadow:0 10px 40px rgba(0,0,0,.3)}
+  dialog::backdrop{background:rgba(10,20,40,.5)}
+  dialog .dwrap{padding:18px;max-height:80vh;overflow-y:auto}
+  dialog h3{font-size:1rem;margin-bottom:12px;color:var(--navy)}
+  .drow{display:flex;gap:8px;margin-top:14px}
+  .drow .btn{padding:11px}
+  .ptlbl{background:rgba(26,39,64,.85);color:#fff;border:none;border-radius:6px;font-size:.65rem;
+    font-weight:700;padding:1px 5px;box-shadow:none}
+  .ptlbl::before{display:none}
+  .exlbl{background:rgba(90,100,110,.8);color:#fff;border:none;border-radius:6px;font-size:.6rem;
+    padding:1px 4px;box-shadow:none}
+  .exlbl::before{display:none}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="back" id="btnBack">‹</button>
+  <div class="bolt">⚡</div>
+  <div>
+    <h1 id="hdrTitle">लाइन सर्वे टूल v2</h1>
+    <div class="sub" id="hdrSub">Rules Engine + 3D · 11kV / 33kV</div>
+  </div>
+</header>
+
+<!-- ============ HOME ============ -->
+<section class="screen active" id="screen-home">
+  <div class="wrap">
+    <div class="hero">
+      <h2>नियम-आधारित लाइन सर्वे</h2>
+      <p>GPS पॉइंट लो — deviation angle से structure (SP/DP/TP) अपने आप तय, हर 1.6 km पर AB switch, structure-wise BOQ और 3D Google Earth export।</p>
+    </div>
+    <button class="btn btn-volt" onclick="App.newSurvey()">＋ नया सर्वे शुरू करें</button>
+    <div class="sec-label">सहेजे गए सर्वे</div>
+    <div id="surveyList"></div>
+  </div>
+</section>
+
+<!-- ============ NEW SURVEY ============ -->
+<section class="screen" id="screen-new">
+  <div class="wrap">
+    <div class="field"><label>लाइन का नाम *</label>
+      <input id="fName" placeholder="जैसे: घंसौर–केदारपुर प्रस्तावित 11kV लाइन"></div>
+    <div class="field"><label>वोल्टेज स्तर *</label>
+      <div class="seg">
+        <button id="v11" class="on" onclick="App.setVolt(11)">11 kV</button>
+        <button id="v33" onclick="App.setVolt(33)">33 kV</button>
+      </div></div>
+    <div class="grid2">
+      <div class="field"><label>फीडर</label><input id="fFeeder" placeholder="फीडर का नाम"></div>
+      <div class="field"><label>मानक स्पैन (m)</label><input id="fSpan" type="number" value="63">
+        <div class="hint">11kV ≈ 60–65m, 33kV ≈ 80–100m</div></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>कहाँ से (From)</label><input id="fFrom" placeholder="सबस्टेशन / टैपिंग"></div>
+      <div class="field"><label>कहाँ तक (To)</label><input id="fTo" placeholder="गंतव्य"></div>
+    </div>
+    <div class="field"><label>सर्वेयर का नाम</label><input id="fSurveyor" placeholder="आपका नाम"></div>
+    <button class="btn btn-volt" onclick="App.createSurvey()">सर्वे शुरू करें →</button>
+  </div>
+</section>
+
+<!-- ============ SURVEY ============ -->
+<section class="screen" id="screen-survey" style="position:relative">
+  <div class="statbar">
+    <div class="st"><b id="stPts">0</b><span>पॉइंट</span></div>
+    <div class="st"><b id="stLen">0.00</b><span>किमी</span></div>
+    <div class="st"><b id="stPoles">0</b><span>अनु. पोल</span></div>
+    <div class="st"><b id="stStruct">—</b><span>अंतिम structure</span></div>
+  </div>
+  <div id="map"></div>
+  <div class="maptools">
+    <button id="btnLayer" title="Satellite" onclick="App.toggleLayer()">🛰️</button>
+    <button id="btnFollow" class="on" title="मेरी लोकेशन" onclick="App.toggleFollow()">🎯</button>
+    <button id="btnTapAdd" title="टैप-ऐड" onclick="App.toggleTapAdd()">👆</button>
+    <button title="मौजूदा नेटवर्क upload (CSV/KML)" onclick="document.getElementById('fileExist').click()">📂</button>
+    <button title="पॉइंट सूची" onclick="App.openSheet()">☰</button>
+  </div>
+  <input type="file" id="fileExist" accept=".csv,.kml,.txt" style="display:none" onchange="App.importExisting(this.files[0])">
+  <div class="capture-dock">
+    <div class="type-row" id="typeRow"></div>
+    <div class="dock-btns">
+      <button class="btn btn-volt" id="btnCapture" onclick="App.capturePoint()">
+        <span class="gps-dot" id="gpsDot"></span>
+        📍 GPS पॉइंट लें
+        <span class="acc" id="accText">GPS खोज रहा है…</span>
+      </button>
+      <button class="icon-btn" title="अंतिम पॉइंट हटाएँ" onclick="App.undoPoint()">↩️</button>
+      <button class="icon-btn" title="सेव / एक्सपोर्ट / BOQ" onclick="App.openExport()">💾</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ POINTS SHEET ============ -->
+<div class="sheet-backdrop" id="sheetBk" onclick="App.closeSheet()"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-head"><b>सर्वे पॉइंट व structures</b>
+    <button class="btn-sm btn btn-ghost" onclick="App.closeSheet()">बंद करें</button></div>
+  <div class="sheet-body" id="ptList"></div>
+</div>
+
+<!-- ============ EXPORT ============ -->
+<dialog id="dlgExport">
+  <div class="dwrap">
+    <h3>एस्टीमेट, BOQ और एक्सपोर्ट</h3>
+    <div class="est-panel">
+      <h3>सारांश</h3>
+      <div class="est-grid">
+        <div><b id="exLen">0.00 km</b><span>कुल रूट लंबाई</span></div>
+        <div><b id="exPoles">0</b><span>अनुमानित पोल (स्पैन से)</span></div>
+        <div><b id="exPts">0</b><span>सर्वे पॉइंट</span></div>
+        <div><b id="exCross">0</b><span>क्रॉसिंग</span></div>
+      </div>
+      <table class="boq" id="boqTable"></table>
+    </div>
+    <button class="btn btn-volt" style="margin-bottom:8px" onclick="App.view3D()">⛰️ 3D में देखें (Google Earth)</button>
+    <button class="btn btn-navy" style="margin-bottom:8px" onclick="App.exportKML()">🌍 3D KML डाउनलोड</button>
+    <button class="btn btn-ghost" style="margin-bottom:8px" onclick="App.exportCSV()">📄 CSV डाउनलोड (BOQ सहित)</button>
+    <div class="hint" style="margin-bottom:10px">3D KML में ठोस खंभे (PCC/लोहा), L-आकार TP, RYB conductor, UG केबल, स्टे — सब नियम अनुसार। मौजूदा नेटवर्क upload हो तो वह भी grey में शामिल।</div>
+    <div class="drow">
+      <button class="btn btn-danger" onclick="App.confirmDelete()">सर्वे हटाएँ</button>
+      <button class="btn btn-ghost" onclick="dlgExport.close()">बंद करें</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ============ EDIT POINT ============ -->
+<dialog id="dlgEdit">
+  <div class="dwrap">
+    <h3 id="edTitle">पॉइंट संपादित करें</h3>
+    <div class="hint" id="edRule" style="margin-bottom:10px"></div>
+    <div class="field"><label>पॉइंट प्रकार (झंडा)</label><select id="edType"></select></div>
+    <div class="field"><label>टिप्पणी</label>
+      <textarea id="edNote" rows="2" placeholder="जैसे: गार्डिंग ज़रूरी, PTCC लगेगा…"></textarea></div>
+    <div class="drow">
+      <button class="btn btn-danger" onclick="App.deleteEditingPoint()">हटाएँ</button>
+      <button class="btn btn-volt" onclick="App.saveEditingPoint()">सेव</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* =====================================================================
+   लाइन सर्वे टूल v2 — Rules Engine (REC/CEA) + 3D KML + Existing Network
+   ===================================================================== */
+
+/* ---------- surveyor के झंडे (बाकी सब नियम से अपने आप) ---------- */
+const FLAGS=[
+  {id:'auto', label:'अपने आप (नियम से)', color:'#1b5cc4'},
+  {id:'road', label:'रोड/NH क्रॉसिंग',   color:'#d43a3a'},
+  {id:'river',label:'नदी/नाला क्रॉसिंग', color:'#0b8f8f'},
+  {id:'rail', label:'रेलवे क्रॉसिंग',    color:'#7a1f1f'},
+  {id:'dtr',  label:'DTR स्थल',          color:'#7b3fbf'},
+  {id:'end',  label:'अंत बिंदु',          color:'#333'}
+];
+const flagOf=id=>FLAGS.find(f=>f.id===id)||FLAGS[0];
+/* structure के रंग (2D map व सूची) */
+const STRUCT_COLOR={'SP':'#1b5cc4','SP+Stay':'#e07b00','DP':'#7b3fbf','TP':'#d43a3a',
+  'DP+AB':'#0b6e6e','DP+DTR':'#a01890','DP+UG':'#7a1f1f','SP-13m':'#5a4632'};
+
+/* ---------- safe storage ---------- */
+const Store=(()=>{let mem={},ok=false;
+  try{localStorage.setItem('__t','1');localStorage.removeItem('__t');ok=true}catch(e){}
+  return{get(k){try{return ok?JSON.parse(localStorage.getItem(k)||'null'):(mem[k]??null)}catch(e){return mem[k]??null}},
+    set(k,v){mem[k]=v;if(ok){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}},persistent:ok};})();
+
+/* ---------- geo helpers ---------- */
+const $=id=>document.getElementById(id);
+const fmt=(n,d=2)=>Number(n).toFixed(d);
+const rad=x=>x*Math.PI/180;
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');
+  clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
+function hav(a,b){const R=6371000,dLa=rad(b.lat-a.lat),dLo=rad(b.lng-a.lng);
+  const h=Math.sin(dLa/2)**2+Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*Math.sin(dLo/2)**2;
+  return 2*R*Math.asin(Math.sqrt(h))}
+function bearing(a,b){const y=Math.sin(rad(b.lng-a.lng))*Math.cos(rad(b.lat));
+  const x=Math.cos(rad(a.lat))*Math.sin(rad(b.lat))-Math.sin(rad(a.lat))*Math.cos(rad(b.lat))*Math.cos(rad(b.lng-a.lng));
+  return (Math.atan2(y,x)*180/Math.PI+360)%360}
+function offP(p,d,brg){const b=rad(brg);
+  return{lat:+(p.lat+Math.cos(b)*d/111320).toFixed(7),
+    lng:+(p.lng+Math.sin(b)*d/(111320*Math.cos(rad(p.lat)))).toFixed(7)}}
+function nowStr(){return new Date().toLocaleString('hi-IN',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})}
+function download(name,mime,content){const blob=new Blob([content],{type:mime});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function safeName(n){return n.replace(/[^\w\u0900-\u097F-]+/g,'_').slice(0,60)||'survey'}
+
+/* =====================================================================
+   RULES ENGINE — REC/CEA मानक
+   ===================================================================== */
+const RULES={devStay:5, devDP:30, devTP:60, longSpan:80, sectionKm:1600};
+function classifySurvey(s){
+  const pts=s.points;
+  if(!pts.length) return [];
+  const res=pts.map((p,i)=>{
+    const prev=i>0?pts[i-1]:null, next=i<pts.length-1?pts[i+1]:null;
+    const bIn=prev?bearing(prev,p):null, bOut=next?bearing(p,next):null;
+    let dev=0;
+    if(bIn!==null&&bOut!==null)dev=Math.abs(((bOut-bIn+540)%360)-180);
+    const spanIn=prev?hav(prev,p):0, spanOut=next?hav(p,next):0;
+    let st={structure:'SP',arm:'channel',h:8,mat:'pcc',stays:0,ab:false,
+      rule:'सीधी लाइन (0–5°) → सामान्य पोल, pin insulator'};
+    if(dev>RULES.devStay&&dev<=RULES.devDP)
+      st={structure:'SP+Stay',arm:'v',h:8,mat:'pcc',stays:1,ab:false,
+        rule:`विचलन ${dev.toFixed(0)}° (5–30°) → एंगल पोल + स्टे`};
+    if(dev>RULES.devDP&&dev<=RULES.devTP)
+      st={structure:'DP',arm:'channel',h:8,mat:'pcc',stays:2,ab:false,
+        rule:`विचलन ${dev.toFixed(0)}° (30–60°) → डबल पोल + 2 स्टे`};
+    if(dev>RULES.devTP)
+      st={structure:'TP',arm:'tp',h:8,mat:'pcc',stays:2,ab:false,
+        rule:`विचलन ${dev.toFixed(0)}° (60–90°) → L-आकार ट्रिपल पोल + स्टे`};
+    if(spanIn>RULES.longSpan||spanOut>RULES.longSpan){
+      st.h=13;st.mat='iron';
+      if(st.structure==='SP'){st.structure='SP-13m';
+        st.rule=`स्पैन>${RULES.longSpan}m → 13m लोहे का खंभा`;}
+      else st.rule+=` | स्पैन>${RULES.longSpan}m → 13m लोहा`;
+    }
+    if(p.type==='road')
+      st={structure:'DP+UG',arm:'cut',h:11,mat:'iron',stays:2,ab:true,
+        rule:'रोड/NH क्रॉसिंग → कट पॉइंट DP 11m लोहा + UG केबल/guarding (clearance 6.1m)'};
+    if(p.type==='rail')
+      st={structure:'DP+UG',arm:'cut',h:13,mat:'iron',stays:2,ab:true,
+        rule:'रेलवे क्रॉसिंग → 13m special crossing + PTCC अनुमति'};
+    if(p.type==='river'&&st.structure!=='TP'&&st.structure!=='DP'){
+      st.h=13;st.mat='iron';
+      if(st.structure==='SP'||st.structure==='SP-13m'){st.structure='SP-13m';
+        st.rule='नदी/नाला क्रॉसिंग → 13m लोहे का खंभा + गार्डिंग';}
+    }
+    if(p.type==='dtr')
+      st={structure:'DP+DTR',arm:'dp',h:8,mat:'pcc',stays:0,ab:false,
+        rule:'DTR स्थल → DP structure (≤100kVA)'};
+    if(i===0)
+      st={structure:'DP+AB',arm:'channel',h:8,mat:'pcc',stays:1,ab:true,
+        rule:'टैपिंग पॉइंट → DP + AB switch (टैपिंग नियम)'};
+    if(p.type==='end'||i===pts.length-1)
+      st={structure:'DP',arm:'channel',h:8,mat:'pcc',stays:2,ab:false,
+        rule:'Dead end → DP + स्टे'};
+    return {...p,...st,dev,bIn,bOut,spanIn};
+  });
+  /* सेक्शनिंग: हर 1.6 km पर कट पॉइंट AB switch */
+  let cum=0,lastAB=0;
+  for(let i=1;i<res.length;i++){
+    cum+=res[i].spanIn;
+    if(res[i].ab)lastAB=cum;
+    else if(cum-lastAB>=RULES.sectionKm){
+      res[i].ab=true;lastAB=cum;
+      if(res[i].structure==='SP'||res[i].structure==='SP+Stay'||res[i].structure==='SP-13m'){
+        res[i].structure='DP+AB';res[i].arm='cut';res[i].stays=Math.max(res[i].stays,1);
+        res[i].rule='सेक्शनिंग 1.6 km → कट पॉइंट DP + AB switch | '+res[i].rule;
+      } else res[i].rule+=' | + AB switch (1.6 km सेक्शनिंग)';
+    }
+  }
+  return res;
+}
+
+/* =====================================================================
+   APP
+   ===================================================================== */
+const App={
+  surveys:Store.get('lst2_surveys')||[],
+  cur:null,volt:11,selFlag:'auto',
+  map:null,layerStd:null,layerSat:null,satOn:false,
+  markers:[],polyline:null,meMarker:null,existLayer:null,
+  follow:true,tapAdd:false,lastPos:null,watchId:null,editingIdx:-1,
+
+  show(id){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    $('screen-'+id).classList.add('active');
+    $('btnBack').style.display=id==='home'?'none':'block';
+    if(id==='home'){$('hdrTitle').textContent='लाइन सर्वे टूल v2';
+      $('hdrSub').textContent='Rules Engine + 3D · 11kV / 33kV';this.renderHome()}
+    if(id==='new'){$('hdrTitle').textContent='नया सर्वे';$('hdrSub').textContent='लाइन की जानकारी भरें'}
+    if(id==='survey'&&this.cur){
+      $('hdrTitle').textContent=this.cur.name;
+      $('hdrSub').textContent=this.cur.volt+' kV · स्पैन '+this.cur.span+' m · नियम: REC/CEA';
+      setTimeout(()=>{this.initMap();this.map.invalidateSize()},60);
+    }
+  },
+  back(){if($('screen-survey').classList.contains('active'))this.persist();this.show('home')},
+
+  renderHome(){
+    const el=$('surveyList');
+    if(!this.surveys.length){
+      el.innerHTML='<div class="empty">अभी कोई सर्वे नहीं।<br>ऊपर "नया सर्वे" दबाकर शुरू करें।'+
+        (Store.persistent?'':'<br><br>⚠️ Preview mode: deploy के बाद डेटा स्थायी सेव होगा।')+'</div>';return;
+    }
+    el.innerHTML=this.surveys.map((s,i)=>{
+      const km=fmt(this.totalLen(s)/1000);
+      return `<div class="survey-card">
+        <div class="kv-badge kv-${s.volt}">${s.volt}<small>kV</small></div>
+        <div class="meta" onclick="App.openSurvey(${i})">
+          <b>${esc(s.name)}</b>
+          <span>${s.points.length} पॉइंट · ${km} km · ${esc(s.date)}${s.existing&&s.existing.length?' · 📂 नेटवर्क':''}</span>
+        </div>
+        <button class="open" onclick="App.openSurvey(${i})">›</button></div>`;
+    }).join('');
+  },
+
+  newSurvey(){
+    ['fName','fFeeder','fFrom','fTo','fSurveyor'].forEach(id=>$(id).value='');
+    this.setVolt(11);this.show('new');
+  },
+  setVolt(v){this.volt=v;$('v11').classList.toggle('on',v===11);
+    $('v33').classList.toggle('on',v===33);$('fSpan').value=v===11?63:90},
+  createSurvey(){
+    const name=$('fName').value.trim();
+    if(!name){toast('लाइन का नाम ज़रूरी है');return}
+    const s={id:Date.now(),name,volt:this.volt,
+      feeder:$('fFeeder').value.trim(),from:$('fFrom').value.trim(),to:$('fTo').value.trim(),
+      surveyor:$('fSurveyor').value.trim(),
+      span:parseInt($('fSpan').value)||(this.volt===11?63:90),
+      date:nowStr(),points:[],existing:[]};
+    this.surveys.unshift(s);this.persist();this.openSurvey(0);
+  },
+  openSurvey(i){this.cur=this.surveys[i];this.show('survey');this.startGPS()},
+
+  /* ---------- map ---------- */
+  initMap(){
+    if(this.map){this.redraw();this.drawExisting();return}
+    this.map=L.map('map',{zoomControl:false}).setView([22.28,79.60],13);
+    this.layerStd=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OSM'});
+    this.layerSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri'});
+    this.layerStd.addTo(this.map);
+    L.control.zoom({position:'bottomright'}).addTo(this.map);
+    this.map.on('click',e=>{if(this.tapAdd)this.addPoint(e.latlng.lat,e.latlng.lng,null,true)});
+    this.redraw();this.drawExisting();
+  },
+  toggleLayer(){this.satOn=!this.satOn;$('btnLayer').classList.toggle('on',this.satOn);
+    if(this.satOn){this.map.removeLayer(this.layerStd);this.layerSat.addTo(this.map)}
+    else{this.map.removeLayer(this.layerSat);this.layerStd.addTo(this.map)}},
+  toggleFollow(){this.follow=!this.follow;$('btnFollow').classList.toggle('on',this.follow);
+    if(this.follow&&this.lastPos)this.map.setView([this.lastPos.lat,this.lastPos.lng],17)},
+  toggleTapAdd(){this.tapAdd=!this.tapAdd;$('btnTapAdd').classList.toggle('on',this.tapAdd);
+    toast(this.tapAdd?'मैप पर टैप करके पॉइंट जोड़ें':'टैप-ऐड बंद')},
+
+  /* ---------- GPS ---------- */
+  startGPS(){
+    if(this.watchId!==null||!navigator.geolocation){if(!navigator.geolocation)this.gpsUi(null);return}
+    this.watchId=navigator.geolocation.watchPosition(
+      p=>{this.lastPos={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy};
+        this.gpsUi(this.lastPos);
+        if(this.map){
+          if(!this.meMarker){
+            this.meMarker=L.circleMarker([this.lastPos.lat,this.lastPos.lng],
+              {radius:7,color:'#fff',weight:2,fillColor:'#1b5cc4',fillOpacity:1}).addTo(this.map);
+            this.map.setView([this.lastPos.lat,this.lastPos.lng],17);
+          }else{this.meMarker.setLatLng([this.lastPos.lat,this.lastPos.lng]);
+            if(this.follow)this.map.panTo([this.lastPos.lat,this.lastPos.lng])}}},
+      e=>this.gpsUi(null),
+      {enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+  },
+  gpsUi(pos){
+    const dot=$('gpsDot'),acc=$('accText');
+    if(!pos){dot.className='gps-dot bad';acc.textContent='GPS नहीं — 👆 टैप-ऐड इस्तेमाल करें';return}
+    const good=pos.acc<=15;
+    dot.className='gps-dot '+(good?'good':'bad');
+    acc.textContent='सटीकता: ±'+Math.round(pos.acc)+' m'+(good?'':' (खुले में रुकें)');
+  },
+
+  /* ---------- points ---------- */
+  capturePoint(){
+    if(!this.lastPos){toast('GPS सिग्नल नहीं — खुले में जाएँ या 👆 टैप-ऐड');return}
+    this.addPoint(this.lastPos.lat,this.lastPos.lng,this.lastPos.acc,false);
+  },
+  addPoint(lat,lng,acc,manual){
+    const p={lat:+fmt(lat,7),lng:+fmt(lng,7),acc:acc?Math.round(acc):null,
+      type:this.selFlag,note:'',manual:!!manual,time:nowStr()};
+    /* पहला पॉइंट: मौजूदा पोल के पास हो तो टैपिंग note */
+    if(!this.cur.points.length&&this.cur.existing&&this.cur.existing.length){
+      let best=null,bd=1e9;
+      this.cur.existing.forEach((e,ix)=>{const d=hav(p,e);if(d<bd){bd=d;best=ix}});
+      if(bd<=30){p.note='मौजूदा नेटवर्क (पॉइंट E'+(best+1)+') से टैपिंग, दूरी '+Math.round(bd)+'m';
+        p.lat=this.cur.existing[best].lat;p.lng=this.cur.existing[best].lng;
+        toast('मौजूदा पोल E'+(best+1)+' से टैपिंग जुड़ गई');}
+    }
+    this.cur.points.push(p);this.persist();this.redraw();
+    const cls=classifySurvey(this.cur), n=cls.length;
+    let msg='#'+n+' → '+cls[n-1].structure;
+    if(n>1)msg+=' · स्पैन '+Math.round(cls[n-1].spanIn)+' m';
+    /* पिछले पॉइंट का structure भी बदला हो सकता है (deviation अब पता चला) */
+    if(n>2)msg+=' | #'+(n-1)+' अब '+cls[n-2].structure;
+    toast(msg);
+    if(navigator.vibrate)navigator.vibrate(60);
+  },
+  undoPoint(){
+    if(!this.cur.points.length){toast('कोई पॉइंट नहीं');return}
+    this.cur.points.pop();this.persist();this.redraw();toast('अंतिम पॉइंट हटाया');
+  },
+  redraw(){
+    if(!this.map)return;
+    this.markers.forEach(m=>this.map.removeLayer(m));this.markers=[];
+    if(this.polyline){this.map.removeLayer(this.polyline);this.polyline=null}
+    const cls=classifySurvey(this.cur);
+    cls.forEach((p,i)=>{
+      const col=STRUCT_COLOR[p.structure]||'#1b5cc4';
+      const mk=L.circleMarker([p.lat,p.lng],{radius:8,color:'#fff',weight:2,fillColor:col,fillOpacity:1})
+        .addTo(this.map)
+        .bindTooltip(String(i+1),{permanent:true,direction:'top',offset:[0,-8],className:'ptlbl'})
+        .on('click',()=>this.editPoint(i));
+      this.markers.push(mk);
+    });
+    if(cls.length>1)
+      this.polyline=L.polyline(cls.map(p=>[p.lat,p.lng]),{color:'#e07b00',weight:4,dashArray:'8 6'}).addTo(this.map);
+    this.updateStats(cls);
+  },
+  drawExisting(){
+    if(!this.map)return;
+    if(this.existLayer){this.map.removeLayer(this.existLayer);this.existLayer=null}
+    const ex=this.cur.existing||[];
+    if(!ex.length)return;
+    const g=L.layerGroup();
+    const feeder=ex.filter(e=>e.type!=='dtr');
+    if(feeder.length>1)
+      L.polyline(feeder.map(e=>[e.lat,e.lng]),{color:'#4a5560',weight:3,opacity:.8}).addTo(g);
+    ex.forEach((e,i)=>{
+      L.circleMarker([e.lat,e.lng],{radius:e.type==='dtr'?7:5,color:'#fff',weight:1.5,
+        fillColor:e.type==='dtr'?'#a06a00':'#6a747e',fillOpacity:1})
+        .bindTooltip((e.type==='dtr'?'DTR ':'E')+(i+1),{permanent:false,className:'exlbl'}).addTo(g);
+    });
+    this.existLayer=g.addTo(this.map);
+  },
+  totalLen(s){let d=0;for(let i=1;i<s.points.length;i++)d+=hav(s.points[i-1],s.points[i]);return d},
+  updateStats(cls){
+    const s=this.cur,n=s.points.length,len=this.totalLen(s);
+    $('stPts').textContent=n;
+    $('stLen').textContent=fmt(len/1000);
+    $('stPoles').textContent=len>0?Math.ceil(len/s.span)+1:0;
+    $('stStruct').textContent=n?(cls||classifySurvey(s))[n-1].structure:'—';
+  },
+
+  /* ---------- existing network import ---------- */
+  importExisting(file){
+    if(!file)return;
+    const rd=new FileReader();
+    rd.onload=()=>{
+      const txt=rd.result;
+      let items=[];
+      try{
+        if(txt.includes('<kml')||txt.includes('<coordinates')){
+          const mm=[...txt.matchAll(/<coordinates>([\s\S]*?)<\/coordinates>/g)];
+          mm.forEach(m=>m[1].trim().split(/\s+/).forEach(c=>{
+            const[lng,lat]=c.split(',').map(Number);
+            if(isFinite(lat)&&isFinite(lng))items.push({lat:+lat.toFixed(7),lng:+lng.toFixed(7),type:'pole'});
+          }));
+        }else{
+          txt.split(/\r?\n/).forEach(line=>{
+            const c=line.split(/[,;\t]/).map(x=>x.trim());
+            if(c.length<2)return;
+            let lat=parseFloat(c[0]),lng=parseFloat(c[1]);
+            if(!isFinite(lat)||!isFinite(lng))return;           // header छोड़ो
+            if(Math.abs(lat)>90&&Math.abs(lng)<=90){const t=lat;lat=lng;lng=t}
+            const ty=(c[2]||'').toLowerCase();
+            items.push({lat:+lat.toFixed(7),lng:+lng.toFixed(7),
+              type:(ty.includes('dtr')||ty.includes('tr'))?'dtr':'pole',name:c[3]||''});
+          });
+        }
+      }catch(e){}
+      if(!items.length){toast('File से coordinates नहीं मिले — format: lat,lng[,type]');return}
+      this.cur.existing=items;this.persist();this.drawExisting();
+      const b=L.latLngBounds(items.map(e=>[e.lat,e.lng]));
+      this.map.fitBounds(b.pad(0.2));
+      toast('मौजूदा नेटवर्क: '+items.length+' पॉइंट load ('+items.filter(e=>e.type==='dtr').length+' DTR)');
+    };
+    rd.readAsText(file);
+    $('fileExist').value='';
+  },
+
+  /* ---------- edit ---------- */
+  editPoint(i){
+    this.editingIdx=i;
+    const cls=classifySurvey(this.cur),p=cls[i];
+    $('edTitle').textContent='#'+(i+1)+' — '+p.structure+(p.dev>5?' ('+p.dev.toFixed(0)+'°)':'');
+    $('edRule').textContent='नियम: '+p.rule;
+    $('edType').innerHTML=FLAGS.map(f=>`<option value="${f.id}" ${f.id===p.type?'selected':''}>${f.label}</option>`).join('');
+    $('edNote').value=p.note||'';
+    $('dlgEdit').showModal();
+  },
+  saveEditingPoint(){
+    const p=this.cur.points[this.editingIdx];
+    p.type=$('edType').value;p.note=$('edNote').value.trim();
+    this.persist();this.redraw();this.renderPtList();
+    $('dlgEdit').close();toast('पॉइंट अपडेट — नियम दोबारा लागू');
+  },
+  deleteEditingPoint(){
+    this.cur.points.splice(this.editingIdx,1);
+    this.persist();this.redraw();this.renderPtList();
+    $('dlgEdit').close();toast('पॉइंट हटाया');
+  },
+
+  openSheet(){this.renderPtList();$('sheet').classList.add('open');$('sheetBk').classList.add('open')},
+  closeSheet(){$('sheet').classList.remove('open');$('sheetBk').classList.remove('open')},
+  renderPtList(){
+    const el=$('ptList'),cls=classifySurvey(this.cur);
+    if(!cls.length){el.innerHTML='<div class="empty" style="margin:10px 0">अभी कोई पॉइंट नहीं।</div>';return}
+    el.innerHTML=cls.map((p,i)=>{
+      const col=STRUCT_COLOR[p.structure]||'#1b5cc4';
+      return `<div class="pt-row">
+        <div class="pt-num" style="background:${col}">${i+1}</div>
+        <div class="info">
+          <b>${p.structure}${p.dev>5?' ('+p.dev.toFixed(0)+'°)':''}${p.manual?' (manual)':''}</b>
+          <span>${p.rule}</span>
+          <span>${p.lat}, ${p.lng}${p.acc?' · ±'+p.acc+'m':''}${i>0?' · स्पैन '+Math.round(p.spanIn)+' m':''}</span>
+          ${p.note?'<span>📝 '+esc(p.note)+'</span>':''}
+        </div>
+        <div class="acts">
+          <button onclick="App.map.setView([${p.lat},${p.lng}],18);App.closeSheet()">🗺️</button>
+          <button onclick="App.editPoint(${i})">✏️</button>
+        </div></div>`;
+    }).join('');
+  },
+
+  /* ---------- export ---------- */
+  boqCounts(cls){
+    const c={};cls.forEach(p=>c[p.structure]=(c[p.structure]||0)+1);
+    const ab=cls.filter(p=>p.ab).length, stays=cls.reduce((a,p)=>a+p.stays,0);
+    const iron=cls.filter(p=>p.mat==='iron').length;
+    return {c,ab,stays,iron};
+  },
+  openExport(){
+    const s=this.cur,len=this.totalLen(s),cls=classifySurvey(s);
+    $('exLen').textContent=fmt(len/1000)+' km';
+    $('exPoles').textContent=len>0?Math.ceil(len/s.span)+1:0;
+    $('exPts').textContent=s.points.length;
+    $('exCross').textContent=s.points.filter(p=>['road','river','rail'].includes(p.type)).length;
+    const {c,ab,stays,iron}=this.boqCounts(cls);
+    const NAMES={'SP':'सामान्य पोल (PCC 8m)','SP+Stay':'एंगल पोल + स्टे','SP-13m':'13m लोहे का खंभा',
+      'DP':'डबल पोल','TP':'ट्रिपल पोल (L-आकार)','DP+AB':'कट पॉइंट DP + AB switch',
+      'DP+DTR':'DP + DTR','DP+UG':'क्रॉसिंग DP (UG/special)'};
+    $('boqTable').innerHTML=Object.entries(c).map(([k,v])=>
+      `<tr><td>${NAMES[k]||k}</td><td>${v}</td></tr>`).join('')+
+      `<tr><td>AB switch (कुल)</td><td>${ab}</td></tr>
+       <tr><td>स्टे सेट (कुल)</td><td>${stays}</td></tr>
+       <tr><td>लोहे के खंभे (कुल)</td><td>${iron}</td></tr>`;
+    $('dlgExport').showModal();
+  },
+
+  /* ================= 3D KML GENERATOR (नियम अनुसार) ================= */
+  buildKML3D(s){
+    const cls=classifySurvey(s);
+    if(!cls.length)return null;
+    const C={pcc:'ffc4c9cc',iron:'ff383634',arm:'ff2a3034',dtr:'ff60564e',
+      R:'ff1414dc',Y:'ff00c8ff',B:'ffe06414',ug:'ff787878',stay:'ff90a0a8',pad:'aa303030',
+      exWire:'ff203020',exPole:'ff8a8f92'};
+    const out=[];
+    const style=col=>`<Style><LineStyle><color>${col}</color><width>1</width></LineStyle><PolyStyle><color>${col}</color></PolyStyle></Style>`;
+    const wallSeg=(a,b,h,col,nm)=>out.push(`<Placemark><name>${nm}</name>${style(col)}<LineString><extrude>1</extrude><altitudeMode>relativeToGround</altitudeMode><coordinates>${a.lng},${a.lat},${h} ${b.lng},${b.lat},${h}</coordinates></LineString></Placemark>`);
+    const poly=(coords,col,nm,mode)=>out.push(`<Placemark><name>${nm}</name>${style(col)}<Polygon><altitudeMode>${mode||'relativeToGround'}</altitudeMode>${mode==='clampToGround'?'<tessellate>1</tessellate>':''}<outerBoundaryIs><LinearRing><coordinates>${coords.map(c=>c[0].lng+','+c[0].lat+','+c[1]).join(' ')} ${coords[0][0].lng},${coords[0][0].lat},${coords[0][1]}</coordinates></LinearRing></outerBoundaryIs></Polygon></Placemark>`);
+    const quad=(p1,h1a,h1b,p2,h2a,h2b,col,nm)=>poly([[p1,h1a],[p2,h2a],[p2,h2b],[p1,h1b]],col,nm);
+    const solidPole=(c,h,perp,along,col,nm,w)=>{
+      const A=offP(offP(c,-w,perp),-w,along),B=offP(offP(c,w,perp),-w,along),
+            D=offP(offP(c,w,perp),w,along),E=offP(offP(c,-w,perp),w,along);
+      wallSeg(A,B,h,col,nm);wallSeg(B,D,h,col,nm);wallSeg(D,E,h,col,nm);wallSeg(E,A,h,col,nm);
+      poly([[A,h],[B,h],[D,h],[E,h]],col,nm);
+      const q=0.5;
+      poly([[offP(offP(c,-q,perp),-q,along),0],[offP(offP(c,q,perp),-q,along),0],
+        [offP(offP(c,q,perp),q,along),0],[offP(offP(c,-q,perp),q,along),0]],C.pad,nm+' base','clampToGround');
+    };
+    const box3D=(c,wx,wy,z0,z1,perp,along,col,nm)=>{
+      const A=offP(offP(c,-wx,perp),-wy,along),B=offP(offP(c,wx,perp),-wy,along),
+            D=offP(offP(c,wx,perp),wy,along),E=offP(offP(c,-wx,perp),wy,along);
+      quad(A,z0,z1,B,z0,z1,col,nm);quad(B,z0,z1,D,z0,z1,col,nm);
+      quad(D,z0,z1,E,z0,z1,col,nm);quad(E,z0,z1,A,z0,z1,col,nm);
+      poly([[A,z1],[B,z1],[D,z1],[E,z1]],col,nm);poly([[A,z0],[E,z0],[D,z0],[B,z0]],col,nm);
+    };
+    const stayWire=(p,h,dir,nm)=>{const an=offP(p,4.5,dir);
+      out.push(`<Placemark><name>${nm}</name><Style><LineStyle><color>${C.stay}</color><width>2</width></LineStyle></Style><LineString><altitudeMode>relativeToGround</altitudeMode><coordinates>${p.lng},${p.lat},${h-0.6} ${an.lng},${an.lat},0</coordinates></LineString></Placemark>`)};
+    const brgAt=cls.map((p,i)=>{
+      if(cls.length===1)return 0;
+      if(i===0)return bearing(cls[0],cls[1]);
+      if(i===cls.length-1)return bearing(cls[i-1],p);
+      const b1=bearing(cls[i-1],p),b2=bearing(p,cls[i+1]);
+      return (Math.atan2(Math.sin(rad(b1))+Math.sin(rad(b2)),Math.cos(rad(b1))+Math.cos(rad(b2)))*180/Math.PI+360)%360;});
+
+    /* मौजूदा नेटवर्क */
+    const ex=s.existing||[];
+    const feeder=ex.filter(e=>e.type!=='dtr');
+    feeder.forEach((p,i)=>{
+      const b=i<feeder.length-1?bearing(p,feeder[i+1]):(feeder.length>1?bearing(feeder[i-1],p):0);
+      solidPole(p,8,(b+90)%360,b,C.exPole,'मौजूदा पोल E'+(i+1),0.12);
+      quad(offP(p,-0.75,(b+90)%360),7.42,7.58,offP(p,0.75,(b+90)%360),7.42,7.58,C.arm,'मौजूदा चैनल');
+    });
+    if(feeder.length>1){
+      [-0.55,0,0.55].forEach(o=>{
+        const coords=feeder.map((p,i)=>{
+          const b=i<feeder.length-1?bearing(p,feeder[i+1]):bearing(feeder[i-1],p);
+          const q=o===0?p:offP(p,o,(b+90)%360);
+          return `${q.lng},${q.lat},${o===0?8.15:7.65}`;}).join(' ');
+        out.push(`<Placemark><name>मौजूदा 11kV फीडर</name><Style><LineStyle><color>${C.exWire}</color><width>2</width></LineStyle></Style><LineString><altitudeMode>relativeToGround</altitudeMode><coordinates>${coords}</coordinates></LineString></Placemark>`);
+      });
+      out.push(`<Placemark><name>मौजूदा फीडर रूट</name><Style><LineStyle><color>b0203020</color><width>3</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>${feeder.map(p=>p.lng+','+p.lat+',0').join(' ')}</coordinates></LineString></Placemark>`);
+    }
+    ex.filter(e=>e.type==='dtr').forEach((p,i)=>{
+      box3D(p,0.55,0.45,3.05,4.25,90,0,C.dtr,'मौजूदा DTR');
+      out.push(`<Placemark><name>मौजूदा DTR ${i+1}</name><Style><IconStyle><color>ff00d7ff</color><scale>0.7</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/electronics.png</href></Icon></IconStyle></Style><Point><altitudeMode>relativeToGround</altitudeMode><coordinates>${p.lng},${p.lat},9.5</coordinates></Point></Placemark>`);
+    });
+
+    /* नए structures */
+    cls.forEach((p,i)=>{
+      const perp=(brgAt[i]+90)%360,along=brgAt[i],h=p.h,col=C[p.mat];
+      const w=p.mat==='iron'?0.10:0.13;
+      if(p.structure==='TP'&&p.bIn!==null&&p.bOut!==null){
+        const back=offP(p,2.5,(p.bIn+180)%360),fwd=offP(p,2.5,p.bOut);
+        [p,back,fwd].forEach(c=>solidPole(c,h,perp,along,col,'TP पोल #'+(i+1),w));
+        const leg=(a,b,z)=>quad(a,z-0.08,z+0.08,b,z-0.08,z+0.08,C.arm,'TP चैनल');
+        const bx=offP(back,-0.35,p.bIn),fx=offP(fwd,0.35,p.bOut);
+        leg(bx,offP(p,0.35,p.bIn),h-0.5);leg(offP(p,-0.35,p.bOut),fx,h-0.5);
+        leg(bx,offP(p,0.35,p.bIn),h-1.2);leg(offP(p,-0.35,p.bOut),fx,h-1.2);
+        stayWire(p,h,p.bIn,'TP स्टे');stayWire(p,h,(p.bOut+180)%360,'TP स्टे');
+      }else{
+        let centers=[0];
+        if(p.structure.startsWith('DP'))centers=[-1.25,1.25];
+        centers.forEach(co=>solidPole(offP(p,co,perp),h,perp,along,col,'पोल #'+(i+1),w));
+        const armHalf=centers.length>1?1.6:(p.arm==='cut'?0.9:0.75);
+        if(p.arm==='channel')
+          quad(offP(p,-armHalf,perp),h-0.58,h-0.42,offP(p,armHalf,perp),h-0.58,h-0.42,C.arm,'चैनल');
+        if(p.arm==='v'){
+          quad(offP(p,-0.05,perp),h-1.0,h-0.88,offP(p,-0.75,perp),h-0.40,h-0.28,C.arm,'V');
+          quad(offP(p,0.05,perp),h-1.0,h-0.88,offP(p,0.75,perp),h-0.40,h-0.28,C.arm,'V');
+        }
+        if(p.arm==='cut'){
+          quad(offP(p,-armHalf,perp),h-0.58,h-0.42,offP(p,armHalf,perp),h-0.58,h-0.42,C.arm,'कट चैनल');
+          quad(offP(p,-armHalf,perp),h-1.28,h-1.12,offP(p,armHalf,perp),h-1.28,h-1.12,C.arm,'कट चैनल');
+        }
+        if(p.arm==='dp'){
+          quad(offP(p,-1.6,perp),h-0.58,h-0.42,offP(p,1.6,perp),h-0.58,h-0.42,C.arm,'DP चैनल');
+          quad(offP(p,-1.6,perp),2.92,3.04,offP(p,1.6,perp),2.92,3.04,C.arm,'DP चैनल');
+          box3D(p,0.55,0.45,3.05,4.25,perp,along,C.dtr,'DTR');
+          [-0.3,0,0.3].forEach(bo=>box3D(offP(p,bo,perp),0.04,0.04,4.25,4.62,perp,along,'ff8a94a0','bushing'));
+        }
+        if(p.stays===1&&p.bIn!==null&&p.bOut!==null){
+          const bis=(Math.atan2(Math.sin(rad(p.bIn+180))+Math.sin(rad(p.bOut)),
+            Math.cos(rad(p.bIn+180))+Math.cos(rad(p.bOut)))*180/Math.PI+360)%360;
+          stayWire(p,h,(bis+180)%360,'स्टे');
+        }else if(p.stays>=2){
+          if(p.bIn!==null)stayWire(p,h,p.bIn%360,'स्टे');
+          if(p.bOut!==null)stayWire(p,h,(p.bOut+180)%360,'स्टे');
+          else if(p.bIn!==null)stayWire(p,h,(p.bIn+180)%360,'स्टे');
+        }
+      }
+    });
+
+    /* RYB — UG sections छोड़कर */
+    const segs=[];let st=0;
+    for(let i=0;i<cls.length-1;i++){
+      const ugSpan=cls[i].arm==='cut'&&cls[i+1].arm==='cut'&&(cls[i].type==='road'||cls[i].type==='rail'||cls[i+1].type==='road'||cls[i+1].type==='rail');
+      if(ugSpan){if(i>st)segs.push([st,i]);
+        const u1=cls[i],u2=cls[i+1];
+        out.push(`<Placemark><name>UG केबल</name><Style><LineStyle><color>${C.ug}</color><width>4</width></LineStyle></Style><LineString><altitudeMode>relativeToGround</altitudeMode><coordinates>${u1.lng},${u1.lat},${u1.h-0.4} ${u1.lng},${u1.lat},0.1 ${u2.lng},${u2.lat},0.1 ${u2.lng},${u2.lat},${u2.h-0.4}</coordinates></LineString></Placemark>`);
+        st=i+1;}
+    }
+    if(st<cls.length-1)segs.push([st,cls.length-1]);
+    if(cls.length===1)segs.length=0;
+    [['R फेज़',-0.55,-0.35,C.R],['Y फेज़',0,0.15,C.Y],['B फेज़',0.55,-0.35,C.B]].forEach(([nm,o,dh,col])=>{
+      segs.forEach(([a,b],si)=>{
+        const coords=[];
+        for(let i=a;i<=b;i++){
+          const q=o===0?cls[i]:offP(cls[i],o,(brgAt[i]+90)%360);
+          coords.push(`${q.lng},${q.lat},${(cls[i].h+dh).toFixed(2)}`);
+        }
+        out.push(`<Placemark><name>${nm} ${si+1}</name><Style><LineStyle><color>${col}</color><width>3</width></LineStyle></Style><LineString><altitudeMode>relativeToGround</altitudeMode><coordinates>${coords.join(' ')}</coordinates></LineString></Placemark>`);
+      });
+    });
+
+    /* ज़मीन route + labels */
+    if(cls.length>1)
+      out.push(`<Placemark><name>नया रूट</name><Style><LineStyle><color>7f007be0</color><width>2</width></LineStyle></Style><LineString><tessellate>1</tessellate><coordinates>${cls.map(p=>p.lng+','+p.lat+',0').join(' ')}</coordinates></LineString></Placemark>`);
+    let cum=0;
+    cls.forEach((p,i)=>{
+      cum+=p.spanIn;
+      out.push(`<Placemark><name>#${i+1} ${p.structure}${p.dev>5?' ('+p.dev.toFixed(0)+'°)':''}</name><description>${esc(p.rule)}${p.note?' | '+esc(p.note):''}${i>0?' | स्पैन '+Math.round(p.spanIn)+' m':''} | संचयी ${Math.round(cum)} m ${p.acc?'| ±'+p.acc+'m':''}</description><Style><IconStyle><color>ffffffff</color><scale>0.4</scale><Icon><href>http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png</href></Icon></IconStyle><LabelStyle><scale>0.6</scale></LabelStyle></Style><Point><altitudeMode>relativeToGround</altitudeMode><coordinates>${p.lng},${p.lat},${p.h+2.2}</coordinates></Point></Placemark>`);
+    });
+    const total=this.totalLen(s);
+    const {c,ab,stays,iron}=this.boqCounts(cls);
+    const mid=cls[Math.floor(cls.length/2)];
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
+<name>${esc(s.name)} (${s.volt}kV)</name>
+<description>From: ${esc(s.from)} To: ${esc(s.to)} | फीडर: ${esc(s.feeder)} | लंबाई ${fmt(total/1000)} km | अनु. पोल ${Math.ceil(total/s.span)+1} | BOQ: ${Object.entries(c).map(([k,v])=>k+'×'+v).join(', ')} | AB ${ab} | स्टे ${stays} | सर्वेयर: ${esc(s.surveyor)} | ${esc(s.date)}</description>
+<LookAt><longitude>${mid.lng}</longitude><latitude>${mid.lat}</latitude><range>${Math.max(150,total/4)}</range><tilt>70</tilt><heading>30</heading></LookAt>
+${out.join('\n')}
+</Document></kml>`;
+  },
+
+  view3D(){
+    const kml=this.buildKML3D(this.cur);
+    if(!kml){toast('पहले पॉइंट लें');return}
+    const fn=safeName(this.cur.name)+'-3d.kml';
+    const file=new File([kml],fn,{type:'application/vnd.google-earth.kml+xml'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      navigator.share({files:[file],title:this.cur.name})
+        .then(()=>toast('Google Earth चुनें — 3D में खुलेगा')).catch(()=>{});
+    }else{
+      download(fn,'application/vnd.google-earth.kml+xml',kml);
+      toast('KML डाउनलोड — file पर tap करके Google Earth में खोलें');
+    }
+  },
+  exportKML(){
+    const kml=this.buildKML3D(this.cur);
+    if(!kml){toast('पहले पॉइंट लें');return}
+    download(safeName(this.cur.name)+'-3d.kml','application/vnd.google-earth.kml+xml',kml);
+    toast('3D KML डाउनलोड हो गई');
+  },
+  exportCSV(){
+    const s=this.cur,cls=classifySurvey(s);
+    if(!cls.length){toast('पहले पॉइंट लें');return}
+    let rows=[['क्रम','संरचना','नियम','Latitude','Longitude','सटीकता(m)','स्पैन(m)','संचयी(m)','विचलन(°)','AB','स्टे','नोट','समय']];
+    let cum=0;
+    cls.forEach((p,i)=>{cum+=p.spanIn;
+      rows.push([i+1,p.structure,'"'+p.rule.replace(/"/g,"'")+'"',p.lat,p.lng,p.acc||'manual',
+        Math.round(p.spanIn),Math.round(cum),p.dev.toFixed(0),p.ab?'हाँ':'',p.stays,
+        '"'+(p.note||'').replace(/"/g,"'")+'"',p.time]);});
+    const {c,ab,stays,iron}=this.boqCounts(cls);
+    rows.push([]);
+    rows.push(['BOQ:',...Object.entries(c).map(([k,v])=>k+'='+v),'AB='+ab,'स्टे='+stays,'लोहा='+iron]);
+    rows.push(['लाइन',s.name,'वोल्टेज',s.volt+'kV','लंबाई(km)',fmt(cum/1000),'अनु.पोल',Math.ceil(cum/s.span)+1]);
+    download(safeName(s.name)+'.csv','text/csv','\ufeff'+rows.map(r=>r.join(',')).join('\n'));
+    toast('CSV (BOQ सहित) डाउनलोड');
+  },
+  confirmDelete(){
+    if(confirm('पूरा सर्वे हटाना है? वापस नहीं आएगा।')){
+      this.surveys=this.surveys.filter(x=>x.id!==this.cur.id);
+      this.persist();$('dlgExport').close();this.cur=null;this.show('home');toast('सर्वे हटाया');
+    }
+  },
+
+  persist(){Store.set('lst2_surveys',this.surveys)},
+  init(){
+    $('typeRow').innerHTML=FLAGS.map(f=>
+      `<button class="type-chip ${f.id==='auto'?'on':''}" data-t="${f.id}" onclick="App.selectFlag('${f.id}')"
+        style="${f.id==='auto'?'background:#1b5cc4;border-color:#1b5cc4;color:#fff':''}">${f.label}</button>`).join('');
+    $('btnBack').onclick=()=>this.back();
+    this.renderHome();
+  },
+  selectFlag(id){
+    this.selFlag=id;
+    document.querySelectorAll('.type-chip').forEach(c=>{
+      const on=c.dataset.t===id, f=flagOf(c.dataset.t);
+      c.classList.toggle('on',on);
+      c.style.background=on?f.color:'';c.style.borderColor=on?f.color:'';c.style.color=on?'#fff':'';
+    });
+  }
+};
+App.init();
+</script>
+</body>
+</html>
